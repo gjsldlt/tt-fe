@@ -8,18 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Chrome, Github } from "lucide-react";
 
 export default function LoginPage() {
   const supabase = createClient();
-  const router = useRouter();
 
   const handleLogin = async (provider: "google" | "github") => {
-    console.log(`${location.origin}/auth/callback`);
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${location.origin}/auth/callback`,

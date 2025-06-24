@@ -27,6 +27,11 @@ export default function Callback() {
         .eq("auth_user_id", user.id)
         .single();
 
+      if (error) {
+        console.error("Error fetching member data:", error);
+        router.replace("/login");
+      }
+
       if (member) {
         router.replace("/dashboard");
       } else {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { Session } from "@supabase/supabase-js";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -10,14 +11,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then((response: { data: { session: any } }) => {
-      const { data } = response;
-      if (!data.session) {
-        router.replace("/login");
-      } else {
-        setIsAuthenticated(true);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then((response: { data: { session: Session | null } }) => {
+        const { data } = response;
+        if (!data.session) {
+          router.replace("/login");
+        } else {
+          setIsAuthenticated(true);
+        }
+      });
   }, []);
 
   if (isAuthenticated === null) {
