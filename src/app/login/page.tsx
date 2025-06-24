@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import { Chrome, Github } from "lucide-react";
 
 export default function LoginPage() {
