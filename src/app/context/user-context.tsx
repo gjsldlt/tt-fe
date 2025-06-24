@@ -16,7 +16,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       .then((response: { data: { user: User | null } }) => {
         setUser(response.data.user);
       });
-  }, []);
+  }, [supabase.auth]);
 
   return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
 };

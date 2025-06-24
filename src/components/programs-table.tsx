@@ -14,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -41,10 +40,6 @@ export function ProgramsTable() {
   const supabase = createClient();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editedPrograms, setEditedPrograms] = useState<
-    Record<string, Partial<Program>>
-  >({});
-  const [savingId, setSavingId] = useState<string | null>(null);
 
   // Dialog state
   const [openDialog, setOpenDialog] = useState(false);
@@ -79,7 +74,7 @@ export function ProgramsTable() {
       setLoading(false);
     };
     fetchPrograms();
-  }, []);
+  }, [supabase]);
 
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -202,8 +197,9 @@ export function ProgramsTable() {
         );
         setOpenDialog(false);
       }
-    } catch (err: any) {
-      toast.error(`Error updating program: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Error updating program: ${errorMessage}`);
     }
     setCreating(false);
     setOpenConfirm(false);

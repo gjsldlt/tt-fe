@@ -65,7 +65,7 @@ export function MemberTable() {
     };
 
     fetch();
-  }, []);
+  }, [supabase]);
 
   const onChange = (id: string, updates: Partial<Member>) => {
     setMembers((prev) =>
@@ -83,7 +83,6 @@ export function MemberTable() {
 
   const handleSave = async () => {
     setSaving(true);
-    let errorOccurred = false;
 
     try {
       // Retrieve the access token from Supabase auth
@@ -117,20 +116,20 @@ export function MemberTable() {
             toast.error(
               `Error saving ${id}: ${errorData.message || res.statusText}`
             );
-            errorOccurred = true;
           }
-        } catch (err: any) {
-          toast.error(`Error saving ${id}: ${err.message}`);
-          errorOccurred = true;
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          toast.error(`Error saving ${id}: ${errorMessage}`);
         }
       }
+      
+      toast.success("All changes saved.");
     } catch (err) {
       const errorMessage =
         err && typeof err === "object" && "message" in err
           ? (err as { message: string }).message
           : String(err);
       toast.error(`Error saving members: ${errorMessage}`);
-      errorOccurred = true;
     } finally {
       setSaving(false);
       setOpenConfirmDialog(false);

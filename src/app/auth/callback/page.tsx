@@ -40,7 +40,7 @@ export default function Callback() {
     };
 
     handleAuthRedirect();
-  }, []);
+  }, [router, supabase]);
 
   return <p className="text-center mt-10">Checking your account...</p>;
 }

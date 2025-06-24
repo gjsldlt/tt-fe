@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,7 +47,7 @@ export default function RegisterPage() {
         }
       });
     }
-  }, [isEmailSignup]);
+  }, [isEmailSignup, router, supabase.auth]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,5 +178,13 @@ export default function RegisterPage() {
         </Button>
       </form>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

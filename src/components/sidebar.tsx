@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { redirect, usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,6 @@ import {
   Users2,
   GraduationCap,
 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Member } from "@/models/member";
 
@@ -33,8 +32,8 @@ export function Sidebar() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  // const [userEmail, setUserEmail] = useState<string | null>(null);
+  // const [user, setUser] = useState<User | null>(null);
   const [member, setMember] = useState<Member | null>(null); // Store member data
   const [openDialog, setOpenDialog] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -43,9 +42,6 @@ export function Sidebar() {
     // Fetch user and then member data
     supabase.auth.getUser().then(async ({ data }) => {
       if (data.user) {
-        setUserEmail(data.user.email ?? null);
-        setUser(data.user);
-
         // Query member table for this user
         const { data: memberData, error } = await supabase
           .from("member")
@@ -58,11 +54,11 @@ export function Sidebar() {
         } else {
           console.error("Error fetching member data:", error);
           setMember(null);
-          redirect("/login");
+          router.replace("/login");
         }
       }
     });
-  }, []);
+  }, [supabase, router]);
 
   const logout = async () => {
     await supabase.auth.signOut();

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase";
 import { Separator } from "@/components/ui/separator";
-import { Chrome, Github } from "lucide-react";
+import { Chrome } from "lucide-react";
 import { redirect } from "next/navigation";
 import { useState } from "react";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
 
@@ -46,7 +46,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         console.error("Error checking session:", error);
         router.replace("/login");
       });
-  }, []);
+  }, [router, supabase]);
 
   if (isAuthenticated === null) {
     return <div className="text-center mt-10">Checking session...</div>;

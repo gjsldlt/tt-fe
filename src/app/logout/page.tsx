@@ -15,7 +15,7 @@ export default function LogoutPage() {
     };
 
     logout();
-  }, []);
+  }, [router, supabase.auth]);
 
   return <p className="text-center mt-10">Logging out...</p>;
 }
