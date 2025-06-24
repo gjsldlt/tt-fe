@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { redirect, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -15,16 +15,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ThemeToggle } from "./theme-toggle";
-
-// Import icons from lucide-react or your icon library
 import {
   LayoutDashboard,
   BookOpen,
-  Users,
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Users2,
+  GraduationCap,
 } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Member } from "@/models/member";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -32,12 +34,33 @@ export function Sidebar() {
   const supabase = createClient();
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [member, setMember] = useState<Member | null>(null); // Store member data
   const [openDialog, setOpenDialog] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
+    // Fetch user and then member data
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user) {
+        setUserEmail(data.user.email ?? null);
+        setUser(data.user);
+
+        // Query member table for this user
+        const { data: memberData, error } = await supabase
+          .from("member")
+          .select("*")
+          .eq("auth_user_id", data.user.id)
+          .single();
+
+        if (!error) {
+          setMember(memberData as Member);
+        } else {
+          console.error("Error fetching member data:", error);
+          setMember(null);
+          redirect("/login");
+        }
+      }
     });
   }, []);
 
@@ -51,16 +74,25 @@ export function Sidebar() {
       label: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
+      roles: ["admin", "member"], // visible to all roles
+    },
+    {
+      label: "Members",
+      href: "/members",
+      icon: Users2,
+      roles: ["admin"], // visible to all roles
     },
     {
       label: "Programs",
       href: "/programs",
       icon: BookOpen,
+      roles: ["admin"], // only admin
     },
     {
       label: "Trainees",
       href: "/trainees",
-      icon: Users,
+      icon: GraduationCap,
+      roles: ["admin", "member"], // visible to all roles
     },
   ];
 
@@ -95,28 +127,34 @@ export function Sidebar() {
 
         {/* Nav menu */}
         <nav className={cn("px-2 py-6 space-y-2", collapsed && "px-2")}>
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted transition-all",
-                pathname.startsWith(item.href) ? "bg-muted font-semibold" : "",
-                collapsed && "justify-center px-2",
-                !collapsed && "gap-3"
-              )}
-            >
-              <item.icon size={20} className="shrink-0" />
-              <span
+          {navItems
+            .filter(
+              (item) => !member || (member && item.roles.includes(member.role))
+            )
+            .map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
                 className={cn(
-                  "transition-all duration-200",
-                  collapsed && "opacity-0 w-0 overflow-hidden"
+                  "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted transition-all",
+                  pathname.startsWith(item.href)
+                    ? "bg-muted font-semibold"
+                    : "",
+                  collapsed && "justify-center px-2",
+                  !collapsed && "gap-3"
                 )}
               >
-                {item.label}
-              </span>
-            </Link>
-          ))}
+                <item.icon size={20} className="shrink-0" />
+                <span
+                  className={cn(
+                    "transition-all duration-200",
+                    collapsed && "opacity-0 w-0 overflow-hidden"
+                  )}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            ))}
         </nav>
       </div>
 
@@ -129,10 +167,28 @@ export function Sidebar() {
       >
         <ThemeToggle collapsed={collapsed} />
 
-        {userEmail && !collapsed && (
-          <div className="text-sm text-muted-foreground">
-            <p className="mb-1">Signed in as</p>
-            <p className="font-medium text-foreground">{userEmail}</p>
+        {member && (
+          <div className="text-sm text-muted-foreground flex">
+            <Avatar className="h-11 w-11">
+              <AvatarFallback>
+                {`${member?.firstname[0] ?? ""}${
+                  member?.lastname[0] ?? ""
+                }`.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="ml-3 flex flex-col">
+                <p className="font-medium text-foreground">{`${member?.firstname} ${member?.lastname}`}</p>
+                <p className="text-xs">
+                  <span className="font-semibold">{member?.email}</span>
+                </p>
+                <p className="text-xs">
+                  <span className="font-semibold">
+                    {member?.role.toUpperCase()}
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
         )}
 

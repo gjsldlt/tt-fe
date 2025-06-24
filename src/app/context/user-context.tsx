@@ -14,7 +14,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth
       .getUser()
       .then((response: { data: { user: User | null } }) => {
-        console.log(response.data.user);
         setUser(response.data.user);
       });
   }, []);
