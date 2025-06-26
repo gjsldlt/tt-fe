@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TaoTracker",
+  title: "TraineeTracker",
   description: "Track your tao and manage your tasks efficiently",
 };
 

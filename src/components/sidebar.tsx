@@ -18,11 +18,11 @@ import { ThemeToggle } from "./theme-toggle";
 import {
   LayoutDashboard,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
   Users2,
   GraduationCap,
+  ChevronsRightLeft,
+  ChevronsLeftRight,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Member } from "@/models/member";
@@ -82,7 +82,7 @@ export function Sidebar() {
       label: "Programs",
       href: "/programs",
       icon: BookOpen,
-      roles: ["admin"], // only admin
+      roles: ["admin", "member"], // only admin
     },
     {
       label: "Trainees",
@@ -108,7 +108,7 @@ export function Sidebar() {
               collapsed && "opacity-0 w-0 overflow-hidden"
             )}
           >
-            TaoTracker
+            TraineeTracker
           </span>
           <Button
             variant="ghost"
@@ -117,7 +117,11 @@ export function Sidebar() {
             className="ml-auto"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            {!collapsed ? (
+              <ChevronsRightLeft size={20} />
+            ) : (
+              <ChevronsLeftRight size={20} />
+            )}
           </Button>
         </div>
 
