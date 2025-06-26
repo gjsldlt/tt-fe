@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
   ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase";
@@ -43,7 +44,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchMember = async () => {
+  const fetchMember = useCallback(async () => {
     if (!user) return;
     setLoading(true);
 
@@ -61,7 +62,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(false);
-  };
+  }, [user, supabase]);
 
   useEffect(() => {
     if (userLoading) return;
@@ -70,7 +71,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       setMember(null);
       setLoading(false);
     }
-  }, [user, userLoading]);
+  }, [user, userLoading, fetchMember]);
 
   return (
     <MemberContext.Provider

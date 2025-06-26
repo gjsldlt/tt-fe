@@ -122,7 +122,7 @@ export default function ProgramsPage() {
     try {
       if (member) {
         console.log("Creating trainee with data:", form);
-        const response = await createTrainee({ ...form, addedBy: member?.id });
+        await createTrainee({ ...form, addedBy: member?.id });
         await fetchTrainees(); // Refresh the list after creation
       }
     } catch (error) {

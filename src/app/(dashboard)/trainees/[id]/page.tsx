@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTraineeById, updateTrainee } from "@/lib/services/trainee.services";
 import { ProgramAssignment, ProgressLog, Trainee } from "@/models/trainee";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Book,
   BookCheck,
@@ -29,12 +29,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Editor } from "@/components/blocks/editor-00/editor";
-import { SerializedEditorState } from "lexical";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createProgressLog,
-  getProgressLogsByMember,
   getProgressLogsForTrainee,
 } from "@/lib/services/progresslog.services";
 import { useMember } from "@/app/context/member-context";
@@ -48,7 +45,6 @@ import {
 } from "@/lib/services/program-assignment";
 import { toast } from "sonner";
 import { Program } from "@/models/program";
-import { ca } from "date-fns/locale";
 
 export default function SelectedTrainee() {
   const { member } = useMember();
@@ -136,7 +132,7 @@ export default function SelectedTrainee() {
     setCreating(true);
     try {
       console.log("Updating trainee with data:", form);
-      const response = await updateTrainee(params.id, {
+      await updateTrainee(params.id, {
         ...form,
         id: trainee?.id || "",
         addedBy: trainee?.addedBy || "",

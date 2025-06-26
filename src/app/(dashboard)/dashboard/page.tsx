@@ -1,10 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/protected-route";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
-import { redirect } from "next/navigation";
 import { MetricCard } from "@/components/metric-card";
 import { BookOpen, Users } from "lucide-react";
 
@@ -49,10 +46,6 @@ export default function DashboardPage() {
     };
     fetchData();
   }, [supabase]);
-
-  const handleLogout = () => {
-    redirect("/logout");
-  };
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("en-US").format(Math.floor(num));

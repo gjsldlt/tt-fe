@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   User,
   Calendar,
@@ -267,7 +267,7 @@ export function TimelineView({
     return events.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [member, progressLogs, programAssignments]);
+  }, [trainee, progressLogs, programAssignments]);
 
   const renderTimelineEvent = (event: TimelineEvent) => {
     switch (event.type) {
@@ -290,7 +290,7 @@ export function TimelineView({
           <div>
             <h2 className="text-2xl font-bold">Timeline</h2>
             <p className="text-muted-foreground">
-              Complete history of {member.firstname}'s journey and progress
+              Complete history of {member.firstname}&apos;s journey and progress
             </p>
           </div>
           <div className="flex items-center space-x-2">

@@ -52,7 +52,7 @@ export interface FilterConfig {
 export interface ColumnDef<T> {
   accessorKey: keyof T;
   header: string;
-  cell?: (value: any, row: T) => React.ReactNode;
+  cell?: (value: unknown, row: T) => React.ReactNode;
   sortable?: boolean;
   filterable?: boolean;
   filterConfig?: FilterConfig;
@@ -80,10 +80,10 @@ interface SortState {
 }
 
 interface FilterState {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-export function DataTable<T extends Record<string, any>>({
+export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
   actions,
@@ -147,19 +147,26 @@ export function DataTable<T extends Record<string, any>>({
             case "boolean":
               return Boolean(cellValue) === Boolean(filterValue);
             case "date":
-              if (filterValue.from || filterValue.to) {
-                const cellDate = new Date(cellValue);
-                const fromDate = filterValue.from
-                  ? new Date(filterValue.from)
-                  : null;
-                const toDate = filterValue.to ? new Date(filterValue.to) : null;
+              if (
+                filterValue &&
+                typeof filterValue === "object" &&
+                filterValue !== null
+              ) {
+                const dateFilter = filterValue as { from?: Date; to?: Date };
+                if (dateFilter.from || dateFilter.to) {
+                  const cellDate = new Date(cellValue as string);
+                  const fromDate = dateFilter.from
+                    ? new Date(dateFilter.from)
+                    : null;
+                  const toDate = dateFilter.to ? new Date(dateFilter.to) : null;
 
-                if (fromDate && toDate) {
-                  return cellDate >= fromDate && cellDate <= toDate;
-                } else if (fromDate) {
-                  return cellDate >= fromDate;
-                } else if (toDate) {
-                  return cellDate <= toDate;
+                  if (fromDate && toDate) {
+                    return cellDate >= fromDate && cellDate <= toDate;
+                  } else if (fromDate) {
+                    return cellDate >= fromDate;
+                  } else if (toDate) {
+                    return cellDate <= toDate;
+                  }
                 }
               }
               return true;
@@ -236,7 +243,7 @@ export function DataTable<T extends Record<string, any>>({
   };
 
   // Handle column filter change
-  const handleColumnFilterChange = (columnKey: string, value: any) => {
+  const handleColumnFilterChange = (columnKey: string, value: unknown) => {
     setColumnFilters((prev) => ({
       ...prev,
       [columnKey]: value,
@@ -298,7 +305,7 @@ export function DataTable<T extends Record<string, any>>({
         return (
           <Input
             placeholder={config.placeholder || `Filter ${column.header}...`}
-            value={filterValue || ""}
+            value={(filterValue as string) || ""}
             onChange={(e) =>
               handleColumnFilterChange(columnKey, e.target.value)
             }
@@ -309,7 +316,7 @@ export function DataTable<T extends Record<string, any>>({
       case "select":
         return (
           <Select
-            value={filterValue || ""}
+            value={(filterValue as string) || ""}
             onValueChange={(value) =>
               handleColumnFilterChange(columnKey, value === "all" ? "" : value)
             }
@@ -337,14 +344,16 @@ export function DataTable<T extends Record<string, any>>({
                 className="h-8 w-[150px] justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {filterValue?.from ? (
-                  filterValue.to ? (
+                {filterValue &&
+                typeof filterValue === "object" &&
+                (filterValue as { from?: Date }).from ? (
+                  (filterValue as { to?: Date }).to ? (
                     <>
-                      {format(filterValue.from, "LLL dd")} -{" "}
-                      {format(filterValue.to, "LLL dd")}
+                      {format((filterValue as { from: Date }).from, "LLL dd")} -{" "}
+                      {format((filterValue as { to: Date }).to, "LLL dd")}
                     </>
                   ) : (
-                    format(filterValue.from, "LLL dd, y")
+                    format((filterValue as { from: Date }).from, "LLL dd, y")
                   )
                 ) : (
                   <span>Pick a date</span>
@@ -355,8 +364,13 @@ export function DataTable<T extends Record<string, any>>({
               <Calendar
                 initialFocus
                 mode="range"
-                defaultMonth={filterValue?.from}
-                selected={filterValue}
+                defaultMonth={
+                  filterValue && typeof filterValue === "object"
+                    ? (filterValue as { from?: Date }).from
+                    : undefined
+                }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                selected={filterValue as any}
                 onSelect={(range) => handleColumnFilterChange(columnKey, range)}
                 numberOfMonths={2}
               />
@@ -495,17 +509,19 @@ export function DataTable<T extends Record<string, any>>({
             let displayValue = String(value);
             if (
               column.filterConfig?.type === "date" &&
-              typeof value === "object"
+              typeof value === "object" &&
+              value !== null
             ) {
-              if (value.from && value.to) {
-                displayValue = `${format(value.from, "MMM dd")} - ${format(
-                  value.to,
+              const dateFilter = value as { from?: Date; to?: Date };
+              if (dateFilter.from && dateFilter.to) {
+                displayValue = `${format(dateFilter.from, "MMM dd")} - ${format(
+                  dateFilter.to,
                   "MMM dd"
                 )}`;
-              } else if (value.from) {
-                displayValue = `From ${format(value.from, "MMM dd")}`;
-              } else if (value.to) {
-                displayValue = `To ${format(value.to, "MMM dd")}`;
+              } else if (dateFilter.from) {
+                displayValue = `From ${format(dateFilter.from, "MMM dd")}`;
+              } else if (dateFilter.to) {
+                displayValue = `To ${format(dateFilter.to, "MMM dd")}`;
               }
             }
 
