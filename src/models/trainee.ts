@@ -19,6 +19,8 @@ export type ProgressLog = {
   description: string;
   traineeId: Trainee;
   created_at: string;
+  programAssignmentId?: string; // Optional field to link to a program assignment
+  programAssignment?: ProgramAssignment; // Optional field to link to a program assignment
 };
 
 export type ProgramAssignment = {
@@ -28,7 +30,6 @@ export type ProgramAssignment = {
   assigned_by: string;
   trainee_id: string;
   program_id: string;
-  program_name?: string; // Additional field for display
   done_at: string | null;
   program?: Program;
   assignedBy?: Member;

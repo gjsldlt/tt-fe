@@ -7,3 +7,11 @@ export interface MetricCardProps {
   trend?: "up" | "down" | "neutral";
   className?: string;
 }
+
+export interface DialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}

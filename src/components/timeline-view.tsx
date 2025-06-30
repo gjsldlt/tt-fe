@@ -18,20 +18,9 @@ import {
   CheckCircle,
   Clock,
   UserCheck,
+  Trash,
 } from "lucide-react";
 import { ProgramAssignment, ProgressLog, Trainee } from "@/models/trainee";
-
-// Type definitions matching your requirements
-interface Member {
-  id: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  originalTeam: string;
-  active: boolean;
-  joinDate: string;
-  avatar?: string;
-}
 
 interface JoinEvent {
   type: "join";
@@ -53,37 +42,42 @@ interface ProgramAssignmentEvent {
 
 type TimelineEvent = JoinEvent | ProgressLogEvent | ProgramAssignmentEvent;
 
-// Timeline Event Components
 function JoinEventCard({ event }: { event: JoinEvent }) {
   return (
-    <Card className="border-l-4 border-l-blue-500">
-      <CardHeader className="pb-3">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-full">
-            <UserCheck className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <CardTitle className="text-lg">Joined the Team</CardTitle>
-            <CardDescription className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date(event.date).toLocaleDateString()}</span>
-            </CardDescription>
+    <Card className="border-l-4 border-l-blue-500 w-full">
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
+              <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg font-semibold truncate">
+                Joined the Team
+              </CardTitle>
+              <CardDescription className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 text-xs sm:text-sm">
+                <div className="flex items-center space-x-1">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span>{new Date(event.date).toLocaleDateString()}</span>
+                </div>
+              </CardDescription>
+            </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 sm:px-6">
         <div className="flex items-center space-x-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+            <AvatarFallback className="text-xs sm:text-sm">
               {event.member.firstname.charAt(0)}
               {event.member.lastname.charAt(0)}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <p className="font-medium">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm sm:text-base truncate">
               {event.member.firstname} {event.member.lastname}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {event.member.originalTeam}
             </p>
           </div>
@@ -93,44 +87,69 @@ function JoinEventCard({ event }: { event: JoinEvent }) {
   );
 }
 
-function ProgressLogCard({ event }: { event: ProgressLogEvent }) {
+function ProgressLogCard({
+  event,
+  deleteProgressLog,
+}: {
+  event: ProgressLogEvent;
+  deleteProgressLog: (logId: string) => void;
+}) {
   return (
-    <Card className="border-l-4 border-l-green-500">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-full">
-              <FileText className="h-5 w-5 text-green-600" />
+    <Card className="border-l-4 border-l-green-500 w-full">
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
+          <div className="flex items-start space-x-3 min-w-0 flex-1">
+            <div className="p-2 bg-green-100 rounded-full flex-shrink-0">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             </div>
-            <div>
-              <CardTitle className="text-lg">{event.data.title}</CardTitle>
-              <CardDescription className="flex items-center space-x-4">
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{new Date(event.date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <User className="h-4 w-4" />
-                  <span>
-                    by{" "}
-                    {`${
-                      (event.data.created_by as unknown as Member).firstname
-                    } ${(event.data.created_by as unknown as Member).lastname}`}
-                  </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg font-semibold leading-tight mb-2">
+                {event.data.title}
+              </CardTitle>
+              <CardDescription className="space-y-2 sm:space-y-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
+                  {event.data.programAssignmentId && (
+                    <div className="flex items-center space-x-1">
+                      <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span>{event.data.programAssignment?.program?.name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>{new Date(event.date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {event.data.created_by.firstname}{" "}
+                      {event.data.created_by.lastname}
+                    </span>
+                  </div>
                 </div>
               </CardDescription>
             </div>
           </div>
-          <Badge
-            variant="outline"
-            className="bg-green-50 text-green-700 border-green-200"
-          >
-            Progress Log
-          </Badge>
+          <div className="flex-shrink-0 flex items-center justify-center space-x-2">
+            <Badge
+              variant="outline"
+              className="bg-green-50 text-green-700 border-green-200 text-xs"
+            >
+              Progress Log
+            </Badge>
+            {/* Delete Progress log */}
+            <button
+              className="text-red-400 hover:text-red-800 text-xs sm:text-sm "
+              onClick={() => {
+                deleteProgressLog(event.data.id);
+              }}
+            >
+              <Trash className="h-4 w-4 inline-block mr-1" />
+            </button>
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+      <CardContent className="px-3 sm:px-6">
+        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
           {event.data.description}
         </p>
       </CardContent>
@@ -138,7 +157,13 @@ function ProgressLogCard({ event }: { event: ProgressLogEvent }) {
   );
 }
 
-function ProgramAssignmentCard({ event }: { event: ProgramAssignmentEvent }) {
+function ProgramAssignmentCard({
+  event,
+  deleteProgramAssignment,
+}: {
+  event: ProgramAssignmentEvent;
+  deleteProgramAssignment: (assignmentId: string) => void;
+}) {
   const isCompleted = event.data.done_at !== null;
   const borderColor = isCompleted
     ? "border-l-purple-500"
@@ -149,51 +174,64 @@ function ProgramAssignmentCard({ event }: { event: ProgramAssignmentEvent }) {
   const badgeText = isCompleted ? "Completed" : "In Progress";
 
   return (
-    <Card className={`border-l-4 ${borderColor}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 ${iconBgColor} rounded-full`}>
+    <Card className={`border-l-4 ${borderColor} w-full`}>
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
+          <div className="flex items-start space-x-3 min-w-0 flex-1">
+            <div className={`p-2 ${iconBgColor} rounded-full flex-shrink-0`}>
               {isCompleted ? (
-                <CheckCircle className={`h-5 w-5 ${iconColor}`} />
+                <CheckCircle className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColor}`} />
               ) : (
-                <BookOpen className={`h-5 w-5 ${iconColor}`} />
+                <BookOpen className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColor}`} />
               )}
             </div>
-            <div>
-              <CardTitle className="text-lg">
-                {event.data.program
-                  ? event.data.program.name
-                  : `Program ${event.data.program_id}`}
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg font-semibold leading-tight mb-2">
+                {event.data.program?.name || `Program ${event.data.program_id}`}
               </CardTitle>
-              <CardDescription className="flex items-center space-x-4">
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{new Date(event.date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <User className="h-4 w-4" />
-                  <span>
-                    by{" "}
-                    {`${event.data.assignedBy?.firstname} ${event.data.assignedBy?.lastname}`}
-                  </span>
+              <CardDescription className="space-y-2 sm:space-y-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>
+                      Assigned {new Date(event.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {event.data.assignedBy?.firstname}{" "}
+                      {event.data.assignedBy?.lastname}
+                    </span>
+                  </div>
                 </div>
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant={badgeVariant}>{badgeText}</Badge>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <Badge variant={badgeVariant} className="text-xs">
+              {badgeText}
+            </Badge>
+            {/* Delete Progress log */}
+            <button
+              className="text-red-400 hover:text-red-800 text-xs sm:text-sm "
+              onClick={() => {
+                deleteProgramAssignment(event.data.id);
+              }}
+            >
+              <Trash className="h-4 w-4 inline-block mr-1" />
+            </button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground leading-relaxed">
+      <CardContent className="px-3 sm:px-6 space-y-3">
+        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
           {event.data.notes}
         </p>
 
         {isCompleted && (
-          <div className="flex items-center space-x-2 text-sm">
-            <CheckCircle className="h-4 w-4 text-green-600" />
+          <div className="flex items-center space-x-2 text-xs sm:text-sm p-2 sm:p-3 bg-green-50 rounded-lg">
+            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
             <span className="text-green-600 font-medium">
               Completed on {new Date(event.data.done_at!).toLocaleDateString()}
             </span>
@@ -201,8 +239,8 @@ function ProgramAssignmentCard({ event }: { event: ProgramAssignmentEvent }) {
         )}
 
         {!isCompleted && (
-          <div className="flex items-center space-x-2 text-sm">
-            <Clock className="h-4 w-4 text-orange-600" />
+          <div className="flex items-center space-x-2 text-xs sm:text-sm p-2 sm:p-3 bg-orange-50 rounded-lg">
+            <Clock className="h-4 w-4 text-orange-600 flex-shrink-0" />
             <span className="text-orange-600 font-medium">
               Currently in progress
             </span>
@@ -218,22 +256,17 @@ export function TimelineView({
   trainee,
   dataLogs = [],
   dataAssignments = [],
+  deleteProgressLog = () => {},
+  deleteProgramAssignment = () => {},
 }: {
   trainee: Trainee;
   dataLogs: ProgressLog[];
   dataAssignments: ProgramAssignment[];
+  deleteProgressLog?: (logId: string) => void;
+  deleteProgramAssignment?: (assignmentId: string) => void;
 }) {
-  const [member] = React.useState<Trainee>(trainee);
   const progressLogs = dataLogs;
   const programAssignments = dataAssignments;
-
-  // Create timeline events and sort by date
-  const daysJoined = React.useMemo(() => {
-    const joinDate = new Date(trainee.created_at);
-    const today = new Date();
-    const diffTime = Math.abs(today.getTime() - joinDate.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
-  }, [trainee.created_at]);
 
   const timelineEvents = React.useMemo(() => {
     const events: TimelineEvent[] = [];
@@ -274,9 +307,19 @@ export function TimelineView({
       case "join":
         return <JoinEventCard event={event} />;
       case "progress_log":
-        return <ProgressLogCard event={event} />;
+        return (
+          <ProgressLogCard
+            event={event}
+            deleteProgressLog={deleteProgressLog}
+          />
+        );
       case "program_assignment":
-        return <ProgramAssignmentCard event={event} />;
+        return (
+          <ProgramAssignmentCard
+            event={event}
+            deleteProgramAssignment={deleteProgramAssignment}
+          />
+        );
       default:
         return null;
     }
@@ -284,48 +327,10 @@ export function TimelineView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Fixed Timeline Header */}
-      <div className="flex-shrink-0 p-6 border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Timeline</h2>
-            <p className="text-muted-foreground">
-              Complete history of {member.firstname}&apos;s journey and progress
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Badge
-              variant="outline"
-              className="bg-blue-50 text-blue-700 border-blue-200"
-            >
-              {timelineEvents.filter((e) => e.type === "join").length} Join
-              Event
-            </Badge>
-            <Badge
-              variant="outline"
-              className="bg-green-50 text-green-700 border-green-200"
-            >
-              {timelineEvents.filter((e) => e.type === "progress_log").length}{" "}
-              Progress Logs
-            </Badge>
-            <Badge
-              variant="outline"
-              className="bg-purple-50 text-purple-700 border-purple-200"
-            >
-              {
-                timelineEvents.filter((e) => e.type === "program_assignment")
-                  .length
-              }{" "}
-              Program Assignments
-            </Badge>
-          </div>
-        </div>
-      </div>
-
       {/* Scrollable Timeline Content */}
       <div
         className="flex-1 overflow-y-auto"
-        style={{ position: "relative", maxHeight: "400px" }}
+        style={{ position: "relative", maxHeight: "700px" }}
       >
         <div className="p-6">
           <div className="relative max-w-4xl mx-auto">
@@ -353,41 +358,6 @@ export function TimelineView({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Fixed Timeline Summary */}
-      <div className="flex-shrink-0 p-6 border-t">
-        <Card className="bg-muted/50">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {daysJoined}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Days since joining
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-green-600">
-                  {progressLogs.length}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Progress logs recorded
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-purple-600">
-                  {programAssignments.filter((a) => a.done_at !== null).length}/
-                  {programAssignments.length}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Programs completed
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

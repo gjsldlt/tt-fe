@@ -29,6 +29,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getMembers } from "@/lib/services/member.services";
 
 type Member = {
   id: string;
@@ -53,14 +54,14 @@ export function MemberTable() {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data, error } = await supabase
-        .from("member")
-        .select("*")
-        .neq("role", "admin") // Exclude admin members
-        .order("lastname", { ascending: true });
+      try {
+        const response = await getMembers();
+        setMembers(response);
+      } catch (error) {
+        console.error("Error fetching members:", error);
+        toast.error("Failed to fetch members");
+      }
 
-      if (error) toast.error("Failed to fetch members");
-      else setMembers(data);
       setLoading(false);
     };
 
@@ -118,11 +119,12 @@ export function MemberTable() {
             );
           }
         } catch (err: unknown) {
-          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          const errorMessage =
+            err instanceof Error ? err.message : "Unknown error";
           toast.error(`Error saving ${id}: ${errorMessage}`);
         }
       }
-      
+
       toast.success("All changes saved.");
     } catch (err) {
       const errorMessage =

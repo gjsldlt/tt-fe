@@ -10,7 +10,8 @@ export async function getProgressLogsForTrainee(traineeId: string) {
       `
             *,
             created_by:member(*),
-            traineeId:trainee(*)
+            traineeId:trainee(*),
+            programAssignment:programAssignmentId(*,program:program_id(*))
         `
     )
     .eq("traineeId", traineeId)
@@ -39,11 +40,13 @@ export async function createProgressLog({
   traineeId,
   title,
   description,
+  programAssignmentId,
 }: {
   created_by: string;
   traineeId: string;
   title: string;
   description: string;
+  programAssignmentId: string | undefined;
 }) {
   const { data, error } = await supabase
     .from("progresslog")
@@ -53,6 +56,7 @@ export async function createProgressLog({
         traineeId,
         title,
         description,
+        programAssignmentId,
       },
     ])
     .select()

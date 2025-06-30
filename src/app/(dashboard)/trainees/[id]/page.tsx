@@ -13,10 +13,11 @@ import {
   CircleDotDashed,
   Edit,
   Mail,
+  User,
   Users,
 } from "lucide-react";
 import { redirect, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,12 +33,14 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createProgressLog,
+  deleteProgressLog,
   getProgressLogsForTrainee,
 } from "@/lib/services/progresslog.services";
 import { useMember } from "@/app/context/member-context";
 import { TimelineView } from "@/components/timeline-view";
 import {
   assignProgramToTrainee,
+  deleteProgramAssignment,
   getActiveProgramForTrainee,
   getAllPrograms,
   getProgramAssignmentsForTrainee,
@@ -45,6 +48,7 @@ import {
 } from "@/lib/services/program-assignment";
 import { toast } from "sonner";
 import { Program } from "@/models/program";
+import { DialogProps } from "@/models/etc";
 
 export default function SelectedTrainee() {
   const { member } = useMember();
@@ -52,27 +56,52 @@ export default function SelectedTrainee() {
   const [trainee, setTrainee] = useState<Trainee | null>(null);
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([]);
   const [activeProgram, setActiveProgram] = useState<Program | null>(null);
+  const [tempProgram, setTempProgram] = useState<Program | null>(null);
   const [activeProgramAssignment, setActiveProgramAssignment] =
     useState<ProgramAssignment | null>(null);
   const [allPrograms, setAllPrograms] = useState<Program[]>([]);
   const [allTraineePrograms, setAllTraineePrograms] = useState<
     ProgramAssignment[]
   >([]);
+  const [programNotes, setProgramNotes] = useState<string>("");
   // Loading state
   const [loading, setLoading] = useState<boolean>(true);
   const [programLoader, setProgramLoader] = useState<boolean>(false);
   // Create Dialog state
   const [creating, setCreating] = useState(false);
   const [openUpdateDialog, setOpenUpdateDialog] = useState(false);
-  const [openUpdateConfirm, setOpenUpdateConfirm] = useState(false);
-  // Progress Log Dialog state
+
+  // Dialog states
   const [openProgressDialog, setOpenProgressDialog] = useState(false);
-  // Program Assignment Dialog state
   const [openProgramDialog, setOpenProgramDialog] = useState(false);
-  const [programNotes, setProgramNotes] = useState<string>("");
   const [openConfirmFinishProgram, setOpenConfirmFinishProgram] =
     useState(false);
+
+  // Dialog variables
+  const DIALOG_DEFAULTS = {
+    isOpen: false,
+    onClose: () => {},
+    title: "",
+    children: null,
+    footer: null,
+  };
+  const [dialogData, setDialogData] = useState<DialogProps>(DIALOG_DEFAULTS);
+
+  // Create timeline events and sort by date
+  const daysJoined = useMemo(() => {
+    if (trainee === null) return 0;
+    const joinDate = new Date(trainee.created_at);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - joinDate.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
+  }, [trainee]);
+
   // Form state
+  const PROGRESS_FORM_DEFAULT = {
+    title: "",
+    description: "",
+    programId: activeProgramAssignment ? activeProgramAssignment.id : undefined,
+  };
   const [form, setForm] = useState({
     firstname: "",
     lastname: "",
@@ -80,10 +109,11 @@ export default function SelectedTrainee() {
     originalTeam: "",
     active: true,
   });
-  const [progressForm, setProgressForm] = useState({
-    title: "",
-    description: "",
-  });
+  const [progressForm, setProgressForm] = useState<{
+    title: string;
+    description: string;
+    programId: string | undefined;
+  }>(PROGRESS_FORM_DEFAULT);
 
   const getTrainee = async (id: string) => {
     setLoading(true);
@@ -94,6 +124,14 @@ export default function SelectedTrainee() {
       setProgressLogs(resProgressLogs);
       const resActiveProgram = await getActiveProgramForTrainee(id);
       setActiveProgramAssignment(resActiveProgram);
+      if (resActiveProgram) {
+        setActiveProgram(resActiveProgram.program || null);
+        setProgressForm({
+          title: "",
+          description: "",
+          programId: resActiveProgram ? resActiveProgram.id : undefined,
+        });
+      }
       const resTraineePrograms = await getProgramAssignmentsForTrainee(id);
       setAllTraineePrograms(resTraineePrograms);
     } catch (error) {
@@ -128,8 +166,8 @@ export default function SelectedTrainee() {
     }));
   };
 
-  const handleUpdate = async () => {
-    setCreating(true);
+  const handleUpdateTraineeProfile = async () => {
+    setLoading(true);
     try {
       console.log("Updating trainee with data:", form);
       await updateTrainee(params.id, {
@@ -141,9 +179,9 @@ export default function SelectedTrainee() {
     } catch (error) {
       console.error("Error creating trainee:", error);
     } finally {
-      setCreating(false);
-      setOpenUpdateConfirm(false);
+      setLoading(false);
       setOpenUpdateDialog(false);
+      setDialogData(DIALOG_DEFAULTS);
     }
   };
 
@@ -165,6 +203,9 @@ export default function SelectedTrainee() {
       setProgressForm({
         title: "",
         description: "",
+        programId: activeProgramAssignment
+          ? activeProgramAssignment.id
+          : undefined,
       });
     }
     setOpenProgressDialog(true);
@@ -182,6 +223,7 @@ export default function SelectedTrainee() {
         traineeId: trainee?.id || "",
         title: progressForm.title,
         description: progressForm.description,
+        programAssignmentId: progressForm.programId,
       });
 
       await getTrainee(params.id);
@@ -195,6 +237,13 @@ export default function SelectedTrainee() {
     } finally {
       setCreating(false);
       setOpenProgressDialog(false);
+      setProgressForm({
+        title: "",
+        description: "",
+        programId: activeProgramAssignment
+          ? activeProgramAssignment.id
+          : undefined,
+      });
     }
   };
 
@@ -220,22 +269,21 @@ export default function SelectedTrainee() {
   const handleSubmitAssignProgram = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!activeProgram) {
+      if (!tempProgram) {
         toast("Please select a program to assign", {
           description: "You must select a program to assign to the trainee.",
         });
         return;
       }
-      console.log("Assigning program:", activeProgram);
-      const response = await assignProgramToTrainee({
+      console.log("Assigning program:", tempProgram);
+      await assignProgramToTrainee({
         notes: programNotes || "",
         assigned_by: member?.id || "",
         trainee_id: trainee?.id || "",
-        program_id: activeProgram.id,
+        program_id: tempProgram.id,
       });
-      console.log("Program assigned successfully:", response);
       toast("Program assigned successfully", {
-        description: `Program ${activeProgram.name} has been assigned to ${trainee?.firstname} ${trainee?.lastname}.`,
+        description: `Program ${tempProgram.name} has been assigned to ${trainee?.firstname} ${trainee?.lastname}.`,
       });
     } catch (error) {
       console.error("Error assigning program:", error);
@@ -250,10 +298,6 @@ export default function SelectedTrainee() {
     }
   };
 
-  const handleFinishProgram = () => {
-    setOpenConfirmFinishProgram(true);
-  };
-
   const traineeDialog = (
     <Dialog open={openUpdateDialog} onOpenChange={setOpenUpdateDialog}>
       <DialogContent>
@@ -265,7 +309,7 @@ export default function SelectedTrainee() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setOpenUpdateConfirm(true);
+            handleUpdateTrainee();
           }}
           className="space-y-4"
         >
@@ -345,38 +389,6 @@ export default function SelectedTrainee() {
             </Button>
           </DialogFooter>
         </form>
-        <Dialog open={openUpdateConfirm} onOpenChange={setOpenUpdateConfirm}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirm Trainee Detail Update</DialogTitle>
-            </DialogHeader>
-            <div>
-              <p>
-                Are you sure you want to update the details for trainee{" "}
-                <b>
-                  {form.firstname} {form.lastname}
-                </b>
-                ?
-              </p>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setOpenUpdateConfirm(false)}
-                disabled={creating}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleUpdate}
-                disabled={creating}
-              >
-                Yes, Update
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </DialogContent>
     </Dialog>
   );
@@ -442,13 +454,12 @@ export default function SelectedTrainee() {
               name="program"
               className="border rounded px-3 py-2"
               required
-              value={activeProgram?.id || ""}
+              value={tempProgram?.id || ""}
               onChange={(e) => {
                 const selectedProgram = allPrograms.find(
                   (p) => p.id.toString() === e.target.value
                 );
-                console.log(selectedProgram, e.target.value, allPrograms);
-                setActiveProgram(selectedProgram || null);
+                setTempProgram(selectedProgram || null);
                 // You may want to set a state for selected program here
                 // setSelectedProgram(selectedProgram);
               }}
@@ -526,7 +537,8 @@ export default function SelectedTrainee() {
                     toast("Program finished successfully", {
                       description: `Program ${activeProgram?.name} has been finished for ${trainee?.firstname} ${trainee?.lastname}.`,
                     });
-                    await getTrainee(params.id);
+                    setActiveProgramAssignment(null);
+                    setActiveProgram(null);
                   }
                 } catch (error) {
                   console.error("Error finishing program:", error);
@@ -547,6 +559,221 @@ export default function SelectedTrainee() {
     </Dialog>
   );
 
+  const handleClearProgramAssignment = async () => {
+    setDialogData({
+      isOpen: true,
+      onClose: () => setDialogData((prev) => ({ ...prev, isOpen: false })),
+      title: "Confirm Delete Program Assignment",
+      children: (
+        <div className="space-y-4">
+          <p>
+            Are you sure you want to delete the program assignment for{" "}
+            <b>
+              {trainee?.firstname} {trainee?.lastname}
+            </b>
+            ?
+          </p>
+          <p>
+            This action cannot be undone and will remove the program assignment
+            from the trainee.
+          </p>
+        </div>
+      ),
+      footer: (
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDialogData((prev) => ({ ...prev, isOpen: false }))
+            }
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              setDialogData((prev) => ({ ...prev, isOpen: false }));
+              setProgramLoader(true);
+              try {
+                if (activeProgramAssignment) {
+                  await deleteProgramAssignment(activeProgramAssignment.id);
+                  toast("Program assignment deleted successfully", {
+                    description: `Program assignment for ${trainee?.firstname} ${trainee?.lastname} has been deleted.`,
+                  });
+                  await getTrainee(params.id);
+                }
+              } catch (error) {
+                console.error("Error deleting program assignment:", error);
+                toast("Error deleting program assignment", {
+                  description: "Please try again later.",
+                });
+              } finally {
+                setProgramLoader(false);
+              }
+            }}
+          >
+            Yes, Delete Assignment
+          </Button>
+        </DialogFooter>
+      ),
+    });
+  };
+
+  const handleUpdateTrainee = async () => {
+    setDialogData({
+      isOpen: true,
+      onClose: () => setDialogData((prev) => ({ ...prev, isOpen: false })),
+      title: "Confirm Update Trainee",
+      children: (
+        <div className="space-y-4">
+          <p>
+            Are you sure you want to update the trainee{" "}
+            <b>
+              {form.firstname} {form.lastname}
+            </b>
+            ?
+          </p>
+          <p>
+            This action will update the trainee&apos;s details with the provided
+            information.
+          </p>
+        </div>
+      ),
+      footer: (
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDialogData((prev) => ({ ...prev, isOpen: false }))
+            }
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="default"
+            onClick={handleUpdateTraineeProfile}
+            disabled={loading}
+          >
+            {loading ? "Updating..." : "Yes, Update Trainee"}
+          </Button>
+        </DialogFooter>
+      ),
+    });
+  };
+
+  const customDialog = (
+    <Dialog open={dialogData.isOpen} onOpenChange={dialogData.onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialogData.title}</DialogTitle>
+        </DialogHeader>
+        {dialogData.children}
+        {dialogData.footer && <DialogFooter>{dialogData.footer}</DialogFooter>}
+      </DialogContent>
+    </Dialog>
+  );
+
+  const handleDeleteProgressLog = (logId: string): void => {
+    setDialogData({
+      isOpen: true,
+      onClose: () => setDialogData((prev) => ({ ...prev, isOpen: false })),
+      title: "Confirm Delete Progress Log",
+      children: (
+        <div className="space-y-4">
+          <p>
+            Are you sure you want to delete this progress log? This action
+            cannot be undone.
+          </p>
+        </div>
+      ),
+      footer: (
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDialogData((prev) => ({ ...prev, isOpen: false }))
+            }
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              setDialogData((prev) => ({ ...prev, isOpen: false }));
+              try {
+                // Call the service to delete the progress log
+                await deleteProgressLog(logId || "");
+              } catch (error) {
+                console.error("Error deleting progress log:", error);
+                toast("Error deleting progress log", {
+                  description: "Please try again later.",
+                });
+              } finally {
+                // Refresh the trainee data to reflect the deletion
+                await getTrainee(params.id);
+              }
+            }}
+          >
+            Yes, Delete Log
+          </Button>
+        </DialogFooter>
+      ),
+    });
+  };
+
+  const handleDeleteProgramAssignment = (
+    assignmentId: string | undefined
+  ): void => {
+    setDialogData({
+      isOpen: true,
+      onClose: () => setDialogData((prev) => ({ ...prev, isOpen: false })),
+      title: "Confirm Delete Program Assignment",
+      children: (
+        <div className="space-y-4">
+          <p>
+            Are you sure you want to delete this program assignment? This action
+            cannot be undone.
+          </p>
+        </div>
+      ),
+      footer: (
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={() =>
+              setDialogData((prev) => ({ ...prev, isOpen: false }))
+            }
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              setDialogData((prev) => ({ ...prev, isOpen: false }));
+              try {
+                // Call the service to delete the program assignment
+                if (assignmentId) {
+                  await deleteProgramAssignment(assignmentId);
+                }
+              } catch (error) {
+                console.error("Error deleting program assignment:", error);
+                toast("Error deleting program assignment", {
+                  description: "Please try again later.",
+                });
+              } finally {
+                // Refresh the trainee data to reflect the deletion
+                await getTrainee(params.id);
+              }
+            }}
+          >
+            Yes, Delete Assignment
+          </Button>
+        </DialogFooter>
+      ),
+    });
+  };
+
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
@@ -557,9 +784,11 @@ export default function SelectedTrainee() {
             {trainee?.firstname} {trainee?.lastname}
           </h1>
         </div>
-        <div className="flex-1 p-4 bg-muted/10 flex grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="flex-1 flex-col">
-            <Card>
+        <div className="flex-1 p-4 bg-muted/10 flex flex-col xl:flex-row gap-4 ">
+          {/* Profile Column */}
+          <div className="flex-1 flex-col flex items-stretch">
+            {/* Profile Card */}
+            <Card className="">
               <CardContent>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                   <div className="flex items-center space-x-4">
@@ -620,39 +849,211 @@ export default function SelectedTrainee() {
                       <CircleDotDashed className="h-4 w-4 mr-2" />
                       Add Progress Log
                     </Button>
-                    {!activeProgramAssignment && (
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {/* Assigned Program Card */}
+            <Card className=" mt-4">
+              <CardContent>
+                {activeProgram ? (
+                  <div className="space-y-2 flex flex-row items-start justify-between">
+                    <div className="flex flex-col space-x-2">
+                      <div className="flex items-center space-x-2">
+                        <BookCheck className="h-4 w-4" />
+                        <span className="text-lg font-semibold">
+                          Active Program: {activeProgram.name}
+                        </span>
+                      </div>
+                      <div className="text-sm mb-4">
+                        {activeProgram.description}
+                      </div>
+                      <div className="text-sm flex flex-row text-muted-foreground space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            Assigned on{" "}
+                            {new Date(
+                              activeProgramAssignment?.created_at || new Date()
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4" />
+                          <span>
+                            Assigned by:{" "}
+                            {`${activeProgramAssignment?.assignedBy?.firstname} ${activeProgramAssignment?.assignedBy?.lastname}` ||
+                              "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end justify-end space-y-2">
                       <Button
-                        onClick={handleAssignProgram}
                         variant="outline"
-                        className="w-50 flex items-center justify-space-around"
+                        onClick={() => handleClearProgramAssignment()}
                       >
-                        {programLoader ? (
-                          <CircleDotDashed className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Book className="h-4 w-4 mr-2" />
-                        )}
-                        Assign Program
+                        <ChevronRight className="h-4 w-4 mr-2" />
+                        Clear Program
                       </Button>
-                    )}
-                    {activeProgramAssignment && (
                       <Button
-                        onClick={handleFinishProgram}
-                        variant="outline"
-                        className="w-50 flex items-center justify-space-around"
+                        variant="default"
+                        onClick={() => {
+                          setOpenConfirmFinishProgram(true);
+                        }}
                       >
-                        {programLoader ? (
-                          <CircleDotDashed className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <BookCheck className="h-4 w-4 mr-2" />
-                        )}
+                        <BookCheck className="h-4 w-4 mr-2" />
                         Finish Program
                       </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground flex justify-center items-space-between ">
+                    <div className="flex items-center space-x-2">
+                      <span>Not assigned in any program</span>
+                    </div>
+                    <div className="flex-1"></div>
+                    <Button
+                      variant="outline"
+                      onClick={handleAssignProgram}
+                      disabled={programLoader}
+                    >
+                      {programLoader ? (
+                        <CircleDotDashed className="h-4 w-4" />
+                      ) : (
+                        <Book className="h-4 w-4 mr-2" />
+                      )}
+                      {programLoader ? "Loading..." : "Assign Program"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Quick Progress Log Form Card */}
+            <Card className="flex flex-1 mt-4">
+              <CardContent className="flex flex-1 flex-col">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleProgressLogSubmit(e);
+                  }}
+                  className="space-y-4 flex flex-1 flex-col"
+                >
+                  <div className="flex-0 grid grid-cols-1 gap-4">
+                    <Label htmlFor="title">Quick Progress Log</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      placeholder="Enter progress log title"
+                      required
+                      value={progressForm.title}
+                      onChange={(e) =>
+                        setProgressForm((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col gap-4">
+                    <div className="flex-0">
+                      <Label htmlFor="description">Description</Label>
+                    </div>
+                    <div className="flex flex-1">
+                      <Textarea
+                        id="description"
+                        name="description"
+                        placeholder="Enter progress log description"
+                        value={progressForm.description}
+                        required
+                        onChange={(e) =>
+                          setProgressForm((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }))
+                        }
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  {/* form clear and submit */}
+                  <div className="flex-0 flex flex-row space-x-4 justify-end">
+                    {activeProgram && (
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="airplane-mode"
+                          checked={progressForm.programId !== undefined}
+                          onCheckedChange={(checked: boolean) =>
+                            setProgressForm((prev) => ({
+                              ...prev,
+                              programId: checked
+                                ? activeProgramAssignment?.id
+                                : undefined,
+                            }))
+                          }
+                        />
+                        <Label htmlFor="airplane-mode">
+                          Related to {activeProgram.name}
+                        </Label>
+                      </div>
                     )}
+                    <div className="flex-1" />
+                    <Button
+                      disabled={creating}
+                      className="w-full flex-0 "
+                      variant="outline"
+                    >
+                      Clear
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      disabled={creating}
+                      className="w-full flex-0 "
+                    >
+                      {creating ? "Creating..." : "Add Progress Log"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+            {/* Stats Card */}
+            <Card className=" mt-4">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {daysJoined}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Days since joining
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {progressLogs.length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Progress logs recorded
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {
+                        allTraineePrograms.filter((a) => a.done_at !== null)
+                          .length
+                      }
+                      /{allTraineePrograms.length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Programs completed
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+          {/* Timeline  */}
           <div className="flex-1 flex-col">
             <Card className="h-full p-6 flex">
               <div className="flex-1 h-full overflow-auto">
@@ -661,6 +1062,8 @@ export default function SelectedTrainee() {
                     trainee={trainee}
                     dataLogs={progressLogs}
                     dataAssignments={allTraineePrograms}
+                    deleteProgressLog={handleDeleteProgressLog}
+                    deleteProgramAssignment={handleDeleteProgramAssignment}
                   />
                 )}
               </div>
@@ -672,6 +1075,7 @@ export default function SelectedTrainee() {
       {progressDialog}
       {programDialog}
       {finishProgramDialog}
+      {customDialog}
     </ProtectedRoute>
   );
 }

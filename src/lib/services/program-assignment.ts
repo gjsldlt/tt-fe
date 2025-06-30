@@ -52,6 +52,8 @@ export async function markProgramAssignmentDone(
     data: { session },
   } = await supabase.auth.getSession();
   const accessToken = session?.access_token;
+  delete activeProgram.assignedBy;
+  delete activeProgram.program;
   console.log({
     ...activeProgram,
     done_at: new Date().toISOString(),
@@ -79,7 +81,7 @@ export async function markProgramAssignmentDone(
 export async function getActiveProgramForTrainee(trainee_id: string) {
   const { data, error } = await supabase
     .from("programassignment")
-    .select("*")
+    .select("*, program:program_id(*), assignedBy:assigned_by(*)")
     .eq("trainee_id", trainee_id)
     .is("done_at", null)
     .order("created_at", { ascending: false })
