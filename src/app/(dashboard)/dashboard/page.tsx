@@ -59,7 +59,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-  }, [supabase]);
+  }, [supabase, fetchData]);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("en-US").format(Math.floor(num));

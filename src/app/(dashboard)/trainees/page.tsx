@@ -22,7 +22,7 @@ import {
 import { useEffect, useState } from "react";
 import { useMember } from "@/app/context/member-context";
 import { toast } from "sonner";
-import { Delete, View } from "lucide-react";
+import { Delete, RefreshCw, View } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export default function ProgramsPage() {
@@ -30,24 +30,10 @@ export default function ProgramsPage() {
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [teams, setTeams] = useState<string[]>(["FED", "AEM", "UI/UX"]);
 
-  // Create Dialog state
-  const [creating, setCreating] = useState(false);
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
-  const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
-
-  // Delete Dialog state
-  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-
-  // Form state
-  const [form, setForm] = useState({
-    firstname: "",
-    lastname: "",
-    email: "",
-    originalTeam: "",
-  });
-
-  const columns: ColumnDef<Trainee>[] = [
+  // Column variables for DataTable
+  const defaultColumns: ColumnDef<Trainee>[] = [
     {
       accessorKey: "firstname",
       header: "User",
@@ -76,6 +62,28 @@ export default function ProgramsPage() {
         </div>
       ),
     },
+    // column for program
+    {
+      accessorKey: "program",
+      header: "Program",
+      sortable: true,
+      filterable: true,
+      filterConfig: {
+        type: "select",
+        options: trainees
+          .map((trainee) => trainee.program)
+          .filter((name, index, self) => name && self.indexOf(name) === index)
+          .map((name) => ({
+            value: name || "",
+            label: name || "No program assigned",
+          })),
+      },
+      cell: (value, row) => (
+        <div className="text-sm text-muted-foreground">
+          {row.program || "No program assigned"}
+        </div>
+      ),
+    },
     {
       accessorKey: "originalTeam",
       header: "Team",
@@ -83,20 +91,77 @@ export default function ProgramsPage() {
       filterable: true,
       filterConfig: {
         type: "select",
-        options: [
-          { label: "FED", value: "FED" },
-          { label: "AEM", value: "AEM" },
-          { label: "UI/UX", value: "UI/UX" },
-        ],
+        // get options from trainees unique originalTeams
+        options: teams.map((team) => ({
+          value: team,
+          label: team,
+        })),
       },
     },
   ];
+  const [columns, setColumns] = useState<ColumnDef<Trainee>[]>(defaultColumns);
+
+  // Create Dialog state
+  const [creating, setCreating] = useState(false);
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
+
+  // Delete Dialog state
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+
+  // Form state
+  const [form, setForm] = useState({
+    firstname: "",
+    lastname: "",
+    email: "",
+    originalTeam: "",
+  });
 
   const fetchTrainees = async () => {
     setIsLoading(true);
     try {
       const data = await getTrainees();
+      console.log(data);
       setTrainees(data);
+      const tempTeams = data
+        .map((trainee) => trainee.originalTeam)
+        // Remove duplicates
+        .filter((team, index, self) => self.indexOf(team) === index);
+      setTeams(tempTeams);
+      setColumns((prev) => {
+        return prev.map((col) => {
+          if (col.accessorKey === "program") {
+            return {
+              ...col,
+              filterConfig: {
+                type: "select",
+                options: data
+                  .map((trainee) => trainee.program)
+                  .filter(
+                    (name, index, self) => name && self.indexOf(name) === index
+                  )
+                  .map((name) => ({
+                    value: name || "",
+                    label: name || "No program assigned",
+                  })),
+              },
+            };
+          }
+          if (col.accessorKey === "originalTeam") {
+            return {
+              ...col,
+              filterConfig: {
+                type: "select",
+                options: tempTeams.map((team) => ({
+                  value: team,
+                  label: team,
+                })),
+              },
+            };
+          }
+          return col;
+        });
+      });
     } catch (error) {
       console.error("Error fetching trainees:", error);
     } finally {
@@ -322,15 +387,28 @@ export default function ProgramsPage() {
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
-        <div className="h-16 flex items-center justify-start align-center border-b px-4 w-full">
+        <div className="h-16 flex items-center justify-start align-center border-b px-4 space-x-2 w-full">
           <h1 className="text-2xl font-bold ">Trainees</h1>
           <div className="flex-1" />
+          {/* Refresh button */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="ml-4"
+            onClick={fetchTrainees}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           <Button variant="outline" onClick={toggleCreateDialog}>
             + New Trainee
           </Button>
         </div>
         <div className="flex-1 p-4 bg-muted/10">
-          {trainees.length === 0 && !isLoading ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : trainees.length === 0 ? (
             <Card className="max-w-md mx-auto mt-10">
               <CardContent className="py-8 flex flex-col items-center">
                 <span className="text-muted-foreground text-lg mb-2">

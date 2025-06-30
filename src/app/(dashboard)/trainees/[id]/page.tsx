@@ -200,19 +200,6 @@ export default function SelectedTrainee() {
     setOpenUpdateDialog(true);
   };
 
-  const handleOpenProgressDialog = () => {
-    if (trainee) {
-      setProgressForm({
-        title: "",
-        description: "",
-        programId: activeProgramAssignment
-          ? activeProgramAssignment.id
-          : undefined,
-      });
-    }
-    setOpenProgressDialog(true);
-  };
-
   const handleProgressLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
@@ -872,14 +859,6 @@ export default function SelectedTrainee() {
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Profile
-                    </Button>
-                    <Button
-                      onClick={handleOpenProgressDialog}
-                      variant="outline"
-                      className="w-50 flex items-center justify-space-around"
-                    >
-                      <CircleDotDashed className="h-4 w-4 mr-2" />
-                      Add Progress Log
                     </Button>
                   </div>
                 </div>

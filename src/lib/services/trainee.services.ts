@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase";
+import { Program } from "@/models/program";
 
 const supabase = createClient();
 
@@ -9,9 +10,35 @@ export async function getTrainees() {
     .order("lastname", { ascending: true });
 
   if (error) throw new Error(`Error fetching trainees: ${error.message}`);
-  return data;
-}
 
+  // add program for each trainee
+  const traineesWithPrograms = await Promise.all(
+    data.map(async (trainee) => {
+      const { data: programData, error: programError } = await supabase
+        .from("programassignment")
+        .select("program_id, program:program_id(*)")
+        .eq("trainee_id", trainee.id)
+        .is("done_at", null)
+        // Only get active assignments
+        .single();
+
+      if (
+        programError?.code === "PGRST116" ||
+        programError?.code === "PGRST101"
+      ) {
+        // No program assigned, return trainee with null program
+        return { ...trainee, program: null };
+      }
+
+      return {
+        ...trainee,
+        program: (programData?.program as unknown as Program).name,
+      };
+    })
+  );
+
+  return traineesWithPrograms;
+}
 export async function updateTrainee(
   id: string,
   updates: Partial<{
@@ -150,4 +177,16 @@ export async function getInactiveTrainees() {
   if (error)
     throw new Error(`Error fetching inactive trainees: ${error.message}`);
   return data;
+}
+
+// Get all unique Original Teams
+export async function getUniqueOriginalTeams() {
+  const { data, error } = await supabase
+    .from("trainee")
+    .select("originalTeam", { count: "exact", head: true })
+    .neq("originalTeam", null)
+    .order("originalTeam", { ascending: true });
+
+  if (error) throw new Error(`Error fetching original teams: ${error.message}`);
+  return data.map((item) => item.originalTeam).filter(Boolean);
 }

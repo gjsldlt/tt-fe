@@ -10,6 +10,7 @@ export type Trainee = {
   active: boolean;
   addedBy: string; // memberId
   created_at: string; // ISO date string
+  program?: string;
 };
 
 export type ProgressLog = {
