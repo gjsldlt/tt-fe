@@ -47,6 +47,8 @@ export interface FilterConfig {
   type: "text" | "select" | "date" | "number" | "boolean";
   options?: { label: string; value: string }[];
   placeholder?: string;
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getValue?: (row: any) => any; // New optional getValue function
 }
 
 export interface ColumnDef<T> {
@@ -133,7 +135,10 @@ export function DataTable<T extends Record<string, unknown>>({
         if (!column?.filterConfig) return;
 
         filtered = filtered.filter((row) => {
-          const cellValue = row[column.accessorKey];
+          // Use getValue if provided, else use the raw cell value
+          const cellValue = column.filterConfig?.getValue
+            ? column.filterConfig.getValue(row)
+            : row[column.accessorKey];
 
           switch (column.filterConfig!.type) {
             case "text":
@@ -145,7 +150,7 @@ export function DataTable<T extends Record<string, unknown>>({
             case "number":
               return Number(cellValue) === Number(filterValue);
             case "boolean":
-              return Boolean(cellValue) === Boolean(filterValue);
+              return String(cellValue) === String(filterValue);
             case "date":
               if (
                 filterValue &&

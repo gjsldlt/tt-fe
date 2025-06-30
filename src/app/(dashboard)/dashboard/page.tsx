@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/protected-route";
 import { createClient } from "@/lib/supabase";
 import { MetricCard } from "@/components/metric-card";
@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [programsCount, setProgramsCount] = useState<number>(0);
   const [traineeCount, setTraineeCount] = useState<number>(0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       // Get current user
@@ -55,7 +55,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchData();

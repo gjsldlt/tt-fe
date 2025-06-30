@@ -3,7 +3,12 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTraineeById, updateTrainee } from "@/lib/services/trainee.services";
-import { ProgramAssignment, ProgressLog, Trainee } from "@/models/trainee";
+import {
+  ProgramAssignment,
+  ProgressLog,
+  Trainee,
+  TraineeAuditLog,
+} from "@/models/trainee";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Book,
@@ -51,6 +56,7 @@ import {
 import { toast } from "sonner";
 import { Program } from "@/models/program";
 import { DialogProps } from "@/models/etc";
+import { getAuditLogsForTrainee } from "@/lib/services/trainee-audit-log";
 
 export default function SelectedTrainee() {
   const { member } = useMember();
@@ -65,6 +71,10 @@ export default function SelectedTrainee() {
   const [allTraineePrograms, setAllTraineePrograms] = useState<
     ProgramAssignment[]
   >([]);
+  const [allTraineeAuditLogs, setAllTraineeAuditLogs] = useState<
+    TraineeAuditLog[]
+  >([]);
+
   const [programNotes, setProgramNotes] = useState<string>("");
   // Loading state
   const [loading, setLoading] = useState<boolean>(true);
@@ -117,6 +127,11 @@ export default function SelectedTrainee() {
     programId: string | undefined;
   }>(PROGRESS_FORM_DEFAULT);
 
+  // Function to fetch trainee data by ID
+  // This function is called when the component mounts or when the trainee ID changes
+  // It fetches the trainee details, progress logs, active program assignment, and all trainee programs
+  // It also sets the form state for updating the trainee profile
+  // and initializes the progress form for adding new progress logs
   const getTrainee = async (id: string) => {
     setLoading(true);
     try {
@@ -136,6 +151,9 @@ export default function SelectedTrainee() {
       }
       const resTraineePrograms = await getProgramAssignmentsForTrainee(id);
       setAllTraineePrograms(resTraineePrograms);
+
+      const resTraineeAuditLogs = await getAuditLogsForTrainee(id);
+      setAllTraineeAuditLogs(resTraineeAuditLogs);
     } catch (error) {
       console.error("Error fetching trainee:", error);
       setTrainee(null);
@@ -171,13 +189,19 @@ export default function SelectedTrainee() {
   const handleUpdateTraineeProfile = async () => {
     setLoading(true);
     try {
-      console.log("Updating trainee with data:", form);
-      await updateTrainee(params.id, {
-        ...form,
-        id: trainee?.id || "",
-        addedBy: trainee?.addedBy || "",
-      });
-      await getTrainee(params.id);
+      if (trainee) {
+        await updateTrainee(
+          params.id,
+          trainee,
+          {
+            ...form,
+            id: trainee?.id || "",
+            addedBy: trainee?.addedBy || "",
+          },
+          member?.id || ""
+        );
+        await getTrainee(params.id);
+      }
     } catch (error) {
       console.error("Error creating trainee:", error);
     } finally {
@@ -204,8 +228,6 @@ export default function SelectedTrainee() {
     e.preventDefault();
     setCreating(true);
     try {
-      // Handle progress log submission here
-      console.log("Submitting progress log:", progressForm);
       // You can call a service function to create the progress log
       await createProgressLog({
         created_by: member?.id || "",
@@ -264,7 +286,6 @@ export default function SelectedTrainee() {
         });
         return;
       }
-      console.log("Assigning program:", tempProgram);
       await assignProgramToTrainee({
         notes: programNotes || "",
         assigned_by: member?.id || "",
@@ -864,170 +885,190 @@ export default function SelectedTrainee() {
                 </div>
               </CardContent>
             </Card>
-            {/* Assigned Program Card */}
-            <Card className=" mt-4">
-              <CardContent>
-                {activeProgram ? (
-                  <div className="space-y-2 flex flex-row items-start justify-between">
-                    <div className="flex flex-col space-x-2">
-                      <div className="flex items-center space-x-2">
-                        <BookCheck className="h-4 w-4" />
-                        <span className="text-lg font-semibold">
-                          Active Program: {activeProgram.name}
-                        </span>
-                      </div>
-                      <div className="text-sm mb-4">
-                        {activeProgram.description}
-                      </div>
-                      <div className="text-sm flex flex-row text-muted-foreground space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Assigned on{" "}
-                            {new Date(
-                              activeProgramAssignment?.created_at || new Date()
-                            ).toLocaleDateString()}
-                          </span>
+            {trainee?.active ? (
+              <>
+                {/* Assigned Program Card */}
+                <Card className=" mt-4">
+                  <CardContent>
+                    {activeProgram ? (
+                      <div className="space-y-2 flex flex-row items-start justify-between">
+                        <div className="flex flex-col space-x-2">
+                          <div className="flex items-center space-x-2">
+                            <BookCheck className="h-4 w-4" />
+                            <span className="text-lg font-semibold">
+                              Active Program: {activeProgram.name}
+                            </span>
+                          </div>
+                          <div className="text-sm mb-4">
+                            {activeProgram.description}
+                          </div>
+                          <div className="text-sm flex flex-row text-muted-foreground space-x-4">
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                Assigned on{" "}
+                                {new Date(
+                                  activeProgramAssignment?.created_at ||
+                                    new Date()
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <User className="h-4 w-4" />
+                              <span>
+                                Assigned by:{" "}
+                                {`${activeProgramAssignment?.assignedBy?.firstname} ${activeProgramAssignment?.assignedBy?.lastname}` ||
+                                  "-"}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
-                          <span>
-                            Assigned by:{" "}
-                            {`${activeProgramAssignment?.assignedBy?.firstname} ${activeProgramAssignment?.assignedBy?.lastname}` ||
-                              "-"}
-                          </span>
+                        <div className="flex flex-col items-end justify-end space-y-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleClearProgramAssignment()}
+                          >
+                            <Trash className="h-4 w-4 mr-2" />
+                            Delete assignment
+                          </Button>
+                          <Button
+                            variant="default"
+                            onClick={() => {
+                              setOpenConfirmFinishProgram(true);
+                            }}
+                          >
+                            <BookCheck className="h-4 w-4 mr-2" />
+                            Finish Program
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end justify-end space-y-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleClearProgramAssignment()}
-                      >
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete assignment
-                      </Button>
-                      <Button
-                        variant="default"
-                        onClick={() => {
-                          setOpenConfirmFinishProgram(true);
-                        }}
-                      >
-                        <BookCheck className="h-4 w-4 mr-2" />
-                        Finish Program
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground flex justify-center items-space-between ">
-                    <div className="flex items-center space-x-2">
-                      <span>Not assigned in any program</span>
-                    </div>
-                    <div className="flex-1"></div>
-                    <Button
-                      variant="outline"
-                      onClick={handleAssignProgram}
-                      disabled={programLoader}
+                    ) : (
+                      <div className="text-sm text-muted-foreground flex justify-center items-space-between ">
+                        <div className="flex items-center space-x-2">
+                          <span>Not assigned in any program</span>
+                        </div>
+                        <div className="flex-1"></div>
+                        <Button
+                          variant="outline"
+                          onClick={handleAssignProgram}
+                          disabled={programLoader}
+                        >
+                          {programLoader ? (
+                            <CircleDotDashed className="h-4 w-4" />
+                          ) : (
+                            <Book className="h-4 w-4 mr-2" />
+                          )}
+                          {programLoader ? "Loading..." : "Assign Program"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                {/* Quick Progress Log Form Card */}
+                <Card className="flex flex-1 mt-4">
+                  <CardContent className="flex flex-1 flex-col">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleProgressLogSubmit(e);
+                      }}
+                      className="space-y-4 flex flex-1 flex-col"
                     >
-                      {programLoader ? (
-                        <CircleDotDashed className="h-4 w-4" />
-                      ) : (
-                        <Book className="h-4 w-4 mr-2" />
-                      )}
-                      {programLoader ? "Loading..." : "Assign Program"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            {/* Quick Progress Log Form Card */}
-            <Card className="flex flex-1 mt-4">
-              <CardContent className="flex flex-1 flex-col">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleProgressLogSubmit(e);
-                  }}
-                  className="space-y-4 flex flex-1 flex-col"
-                >
-                  <div className="flex-0 grid grid-cols-1 gap-4">
-                    <Label htmlFor="title">Quick Progress Log</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      placeholder="Enter progress log title"
-                      required
-                      value={progressForm.title}
-                      onChange={(e) =>
-                        setProgressForm((prev) => ({
-                          ...prev,
-                          title: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex-1 flex flex-col gap-4">
-                    <div className="flex-0">
-                      <Label htmlFor="description">Description</Label>
-                    </div>
-                    <div className="flex flex-1">
-                      <Textarea
-                        id="description"
-                        name="description"
-                        placeholder="Enter progress log description"
-                        value={progressForm.description}
-                        required
-                        onChange={(e) =>
-                          setProgressForm((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                  {/* form clear and submit */}
-                  <div className="flex-0 flex flex-row space-x-4 justify-end">
-                    {activeProgram && (
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="airplane-mode"
-                          checked={progressForm.programId !== undefined}
-                          onCheckedChange={(checked: boolean) =>
+                      <div className="flex-0 grid grid-cols-1 gap-4">
+                        <Label htmlFor="title">Quick Progress Log</Label>
+                        <Input
+                          id="title"
+                          name="title"
+                          placeholder="Enter progress log title"
+                          required
+                          value={progressForm.title}
+                          onChange={(e) =>
                             setProgressForm((prev) => ({
                               ...prev,
-                              programId: checked
-                                ? activeProgramAssignment?.id
-                                : undefined,
+                              title: e.target.value,
                             }))
                           }
                         />
-                        <Label htmlFor="airplane-mode">
-                          Related to {activeProgram.name}
-                        </Label>
                       </div>
-                    )}
-                    <div className="flex-1" />
-                    <Button
-                      disabled={creating}
-                      className="w-full flex-0 "
-                      variant="outline"
-                    >
-                      Clear
-                    </Button>
+                      <div className="flex-1 flex flex-col gap-4">
+                        <div className="flex-0">
+                          <Label htmlFor="description">Description</Label>
+                        </div>
+                        <div className="flex flex-1">
+                          <Textarea
+                            id="description"
+                            name="description"
+                            placeholder="Enter progress log description"
+                            value={progressForm.description}
+                            required
+                            onChange={(e) =>
+                              setProgressForm((prev) => ({
+                                ...prev,
+                                description: e.target.value,
+                              }))
+                            }
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                      {/* form clear and submit */}
+                      <div className="flex-0 flex flex-row space-x-4 justify-end">
+                        {activeProgram && (
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="airplane-mode"
+                              checked={progressForm.programId !== undefined}
+                              onCheckedChange={(checked: boolean) =>
+                                setProgressForm((prev) => ({
+                                  ...prev,
+                                  programId: checked
+                                    ? activeProgramAssignment?.id
+                                    : undefined,
+                                }))
+                              }
+                            />
+                            <Label htmlFor="airplane-mode">
+                              Related to {activeProgram.name}
+                            </Label>
+                          </div>
+                        )}
+                        <div className="flex-1" />
+                        <Button
+                          disabled={creating}
+                          className="w-full flex-0 "
+                          variant="outline"
+                        >
+                          Clear
+                        </Button>
 
-                    <Button
-                      type="submit"
-                      disabled={creating}
-                      className="w-full flex-0 "
-                    >
-                      {creating ? "Creating..." : "Add Progress Log"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+                        <Button
+                          type="submit"
+                          disabled={creating}
+                          className="w-full flex-0 "
+                        >
+                          {creating ? "Creating..." : "Add Progress Log"}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card className=" mt-4">
+                <CardContent className="text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Trainee is Inactive. No progress logs or program assignments
+                    can be added.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Please activate the trainee to enable progress tracking.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    You can edit the trainee profile to activate them.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             {/* Stats Card */}
             <Card className=" mt-4">
               <CardContent className="space-y-4">
@@ -1073,6 +1114,7 @@ export default function SelectedTrainee() {
                     trainee={trainee}
                     dataLogs={progressLogs}
                     dataAssignments={allTraineePrograms}
+                    traineeAuditLogs={allTraineeAuditLogs}
                     deleteProgressLog={handleDeleteProgressLog}
                     deleteProgramAssignment={handleDeleteProgramAssignment}
                   />

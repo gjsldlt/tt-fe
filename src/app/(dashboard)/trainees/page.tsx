@@ -19,11 +19,12 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMember } from "@/app/context/member-context";
 import { toast } from "sonner";
 import { Delete, RefreshCw, View } from "lucide-react";
 import { redirect } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 
 export default function ProgramsPage() {
   const { member } = useMember();
@@ -33,72 +34,102 @@ export default function ProgramsPage() {
   const [teams, setTeams] = useState<string[]>(["FED", "AEM", "UI/UX"]);
 
   // Column variables for DataTable
-  const defaultColumns: ColumnDef<Trainee>[] = [
-    {
-      accessorKey: "firstname",
-      header: "User",
-      sortable: true,
-      filterable: true,
-      filterConfig: {
-        type: "text",
-        placeholder: "Search users...",
-      },
-      cell: (value, row) => (
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>
-              {(row.firstname + " " + row.lastname)
-                .split(" ")
-                .map((n) => n[0])
-                .join("")}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="font-medium">
-              {row.firstname + " " + row.lastname}
+  const defaultColumns: ColumnDef<Trainee>[] = useMemo(
+    () => [
+      {
+        accessorKey: "firstname",
+        header: "User",
+        sortable: true,
+        filterable: false,
+        filterConfig: {
+          type: "text",
+          placeholder: "Search users...",
+        },
+        cell: (value, row) => (
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>
+                {(
+                  row.firstname.replaceAll(" ", "") +
+                  " " +
+                  row.lastname.replaceAll(" ", "")
+                )
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="font-medium">
+                {row.firstname + " " + row.lastname}
+              </div>
+              <div className="text-sm text-muted-foreground">{row.email}</div>
             </div>
-            <div className="text-sm text-muted-foreground">{row.email}</div>
           </div>
-        </div>
-      ),
-    },
-    // column for program
-    {
-      accessorKey: "program",
-      header: "Program",
-      sortable: true,
-      filterable: true,
-      filterConfig: {
-        type: "select",
-        options: trainees
-          .map((trainee) => trainee.program)
-          .filter((name, index, self) => name && self.indexOf(name) === index)
-          .map((name) => ({
-            value: name || "",
-            label: name || "No program assigned",
+        ),
+      },
+      // column for active status
+      {
+        accessorKey: "active",
+        header: "Status",
+        sortable: true,
+        filterable: true,
+        filterConfig: {
+          type: "select",
+          options: [
+            { value: "true", label: "Active" },
+            { value: "false", label: "Inactive" },
+          ],
+          defaultValue: "true",
+          getValue: (row) => String(row.active),
+        },
+        cell: (value, row) => (
+          <div className="text-sm">
+            <Badge variant={row.active ? "default" : "secondary"}>
+              {row.active ? "Active" : "Inactive"}
+            </Badge>
+          </div>
+        ),
+      },
+      // column for program
+      {
+        accessorKey: "program",
+        header: "Program",
+        sortable: true,
+        filterable: true,
+        filterConfig: {
+          type: "select",
+          options: trainees
+            .map((trainee) => trainee.program)
+            .filter((name, index, self) => name && self.indexOf(name) === index)
+            .map((name) => ({
+              value: name || "",
+              label: name || "No program assigned",
+            })),
+        },
+        cell: (value, row) => (
+          <div className="text-sm text-muted-foreground">
+            {row.program || "No program assigned"}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "originalTeam",
+        header: "Team",
+        sortable: true,
+        filterable: true,
+        filterConfig: {
+          type: "select",
+          // get options from trainees unique originalTeams
+          options: teams.map((team) => ({
+            value: team,
+            label: team,
           })),
+        },
       },
-      cell: (value, row) => (
-        <div className="text-sm text-muted-foreground">
-          {row.program || "No program assigned"}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "originalTeam",
-      header: "Team",
-      sortable: true,
-      filterable: true,
-      filterConfig: {
-        type: "select",
-        // get options from trainees unique originalTeams
-        options: teams.map((team) => ({
-          value: team,
-          label: team,
-        })),
-      },
-    },
-  ];
+    ],
+    [teams, trainees]
+  );
   const [columns, setColumns] = useState<ColumnDef<Trainee>[]>(defaultColumns);
 
   // Create Dialog state
@@ -121,7 +152,6 @@ export default function ProgramsPage() {
     setIsLoading(true);
     try {
       const data = await getTrainees();
-      console.log(data);
       setTrainees(data);
       const tempTeams = data
         .map((trainee) => trainee.originalTeam)
@@ -186,7 +216,6 @@ export default function ProgramsPage() {
     setCreating(true);
     try {
       if (member) {
-        console.log("Creating trainee with data:", form);
         await createTrainee({ ...form, addedBy: member?.id });
         await fetchTrainees(); // Refresh the list after creation
       }

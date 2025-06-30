@@ -54,10 +54,6 @@ export async function markProgramAssignmentDone(
   const accessToken = session?.access_token;
   delete activeProgram.assignedBy;
   delete activeProgram.program;
-  console.log({
-    ...activeProgram,
-    done_at: new Date().toISOString(),
-  });
 
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/programassignment?id=eq.${activeProgram.id}`,

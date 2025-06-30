@@ -35,3 +35,20 @@ export type ProgramAssignment = {
   program?: Program;
   assignedBy?: Member;
 };
+
+export type TraineeAuditLog = {
+  id: string;
+  trainee_id: string;
+  changes: string | JSON; // JSON string of changes
+  note: string;
+  updated_by: string; // memberId
+  created_at: string; // ISO date string
+  trainee?: Trainee; // Optional field to link to the trainee
+  updatedBy?: Member; // Optional field to link to the member who made the changes
+};
+export type TraineeAuditChanges = {
+  [field: string]: {
+    old: string | number | boolean | null;
+    new: string | number | boolean | null;
+  };
+};

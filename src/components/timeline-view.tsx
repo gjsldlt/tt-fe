@@ -19,8 +19,16 @@ import {
   Clock,
   UserCheck,
   Trash,
+  Edit3,
+  AlertTriangle,
 } from "lucide-react";
-import { ProgramAssignment, ProgressLog, Trainee } from "@/models/trainee";
+import {
+  ProgramAssignment,
+  ProgressLog,
+  Trainee,
+  TraineeAuditLog,
+} from "@/models/trainee";
+import { useMemo } from "react";
 
 interface JoinEvent {
   type: "join";
@@ -40,7 +48,41 @@ interface ProgramAssignmentEvent {
   data: ProgramAssignment;
 }
 
-type TimelineEvent = JoinEvent | ProgressLogEvent | ProgramAssignmentEvent;
+interface TraineeAuditLogEvent {
+  type: "audit_log";
+  date: string;
+  data: TraineeAuditLog;
+}
+
+type TimelineEvent =
+  | JoinEvent
+  | ProgressLogEvent
+  | ProgramAssignmentEvent
+  | TraineeAuditLogEvent;
+
+// Helper function to format field names
+const formatFieldName = (fieldName: string): string => {
+  const fieldMap: Record<string, string> = {
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email Address",
+    originalTeam: "Team Assignment",
+    active: "Status",
+  };
+  return fieldMap[fieldName] || fieldName;
+};
+
+// Helper function to format field values
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const formatFieldValue = (value: any, fieldName: string): string => {
+  if (fieldName === "active") {
+    return value ? "Active" : "Inactive";
+  }
+  if (value === "" || value === null || value === undefined) {
+    return "(empty)";
+  }
+  return String(value);
+};
 
 function JoinEventCard({ event }: { event: JoinEvent }) {
   return (
@@ -251,22 +293,128 @@ function ProgramAssignmentCard({
   );
 }
 
+function AuditLogCard({ event }: { event: TraineeAuditLog }) {
+  const changesCount = Object.keys(event.changes).length;
+  return (
+    <Card className="border-l-4 border-l-amber-500 w-full">
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
+          <div className="flex items-start space-x-3 min-w-0 flex-1">
+            <div className="p-2 bg-amber-100 rounded-full flex-shrink-0">
+              <Edit3 className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg font-semibold leading-tight mb-2">
+                Profile Updated
+              </CardTitle>
+              <CardDescription className="space-y-2 sm:space-y-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>
+                      {new Date(event.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {`${event.updatedBy?.firstname} ${event.updatedBy?.lastname}`}
+                    </span>
+                  </div>
+                </div>
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <Badge
+              variant="outline"
+              className="bg-amber-50 text-amber-700 border-amber-200 text-xs"
+            >
+              {changesCount} Change{changesCount !== 1 ? "s" : ""}
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-3 sm:px-6 space-y-4">
+        {/* Changes Summary */}
+        <div className="space-y-3">
+          {Object.entries(event.changes).map(([fieldName, change]) => (
+            <div key={fieldName} className="p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center space-x-2 mb-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <span className="font-medium text-sm">
+                  {formatFieldName(fieldName)}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    From
+                  </span>
+                  <div className="p-2 bg-red-50 border border-red-200 rounded text-red-800 font-mono text-xs break-all">
+                    {formatFieldValue(change.old, fieldName)}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    To
+                  </span>
+                  <div className="p-2 bg-green-50 border border-green-200 rounded text-green-800 font-mono text-xs break-all">
+                    {formatFieldValue(change.new, fieldName)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Note */}
+        {event.note && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <FileText className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="text-xs text-blue-600 uppercase tracking-wide font-medium">
+                  Note
+                </span>
+                <p className="text-sm text-blue-800 mt-1 leading-relaxed">
+                  {event.note}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // Main Timeline Component
 export function TimelineView({
   trainee,
   dataLogs = [],
   dataAssignments = [],
+  traineeAuditLogs = [],
   deleteProgressLog = () => {},
   deleteProgramAssignment = () => {},
 }: {
   trainee: Trainee;
   dataLogs: ProgressLog[];
   dataAssignments: ProgramAssignment[];
+  traineeAuditLogs?: TraineeAuditLog[];
   deleteProgressLog?: (logId: string) => void;
   deleteProgramAssignment?: (assignmentId: string) => void;
 }) {
   const progressLogs = dataLogs;
   const programAssignments = dataAssignments;
+  const traineeAuditLogsData = useMemo(() => {
+    return traineeAuditLogs.map((log) => ({
+      ...log,
+      trainee: trainee, // Link the trainee to the audit log
+      // Only set updatedBy if it exists, otherwise leave as undefined
+      updatedBy: log.updatedBy,
+    }));
+  }, [trainee, traineeAuditLogs]);
 
   const timelineEvents = React.useMemo(() => {
     const events: TimelineEvent[] = [];
@@ -296,11 +444,20 @@ export function TimelineView({
       });
     });
 
+    // Add audit logs
+    traineeAuditLogsData.forEach((log) => {
+      events.push({
+        type: "audit_log",
+        date: log.created_at,
+        data: log,
+      });
+    });
+
     // Sort by date (newest first)
     return events.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [trainee, progressLogs, programAssignments]);
+  }, [trainee, progressLogs, programAssignments, traineeAuditLogsData]);
 
   const renderTimelineEvent = (event: TimelineEvent) => {
     switch (event.type) {
@@ -320,6 +477,8 @@ export function TimelineView({
             deleteProgramAssignment={deleteProgramAssignment}
           />
         );
+      case "audit_log":
+        return <AuditLogCard event={event.data} />;
       default:
         return null;
     }

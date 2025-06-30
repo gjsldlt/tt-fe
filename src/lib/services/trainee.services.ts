@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase";
 import { Program } from "@/models/program";
+import { createTraineeAuditLog } from "./trainee-audit-log";
 
 const supabase = createClient();
 
@@ -41,6 +42,15 @@ export async function getTrainees() {
 }
 export async function updateTrainee(
   id: string,
+  old: Partial<{
+    id: string;
+    firstname: string;
+    lastname: string;
+    email: string;
+    originalTeam: string;
+    active: boolean;
+    addedBy: string;
+  }>,
   updates: Partial<{
     id: string;
     firstname: string;
@@ -49,7 +59,8 @@ export async function updateTrainee(
     originalTeam: string;
     active: boolean;
     addedBy: string;
-  }>
+  }>,
+  updatedBy: string
 ) {
   const {
     data: { session },
@@ -69,6 +80,36 @@ export async function updateTrainee(
       body: JSON.stringify(updates),
     }
   );
+
+  // create a new trainee audit log entry
+  if (res.ok) {
+    // Fetch the previous trainee data to construct the changes object
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const changes: Record<string, { old: any; new: any }> = {};
+    for (const key in updates) {
+      if (Object.prototype.hasOwnProperty.call(updates, key)) {
+        if (
+          old[key as keyof typeof old] !== updates[key as keyof typeof updates]
+        ) {
+          changes[key] = {
+            old: old[key as keyof typeof old],
+            new: updates[key as keyof typeof updates],
+          };
+        }
+      }
+    }
+    await createTraineeAuditLog({
+      trainee_id: id,
+      updated_by: updatedBy || "",
+      changes,
+      note: "Trainee updated",
+    });
+  } else {
+    const errorData = await res.json();
+    throw new Error(
+      `Error updating trainee ${id}: ${errorData.message || res.statusText}`
+    );
+  }
   return res;
 }
 
