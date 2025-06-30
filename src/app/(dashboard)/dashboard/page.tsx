@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/protected-route";
 import { createClient } from "@/lib/supabase";
 import { MetricCard } from "@/components/metric-card";
-import { BookOpen, Users } from "lucide-react";
+import { BookOpen, RefreshCw, Users } from "lucide-react";
+import { getActiveTrainees } from "@/lib/services/trainee.services";
 
 type Member = {
   id: string;
@@ -12,12 +13,15 @@ type Member = {
 
 export default function DashboardPage() {
   const supabase = createClient();
+  const [loading, setLoading] = useState<boolean>(true);
   const [member, setMember] = useState<Member | null>(null);
   const [membersCount, setMembersCount] = useState<number>(0);
   const [programsCount, setProgramsCount] = useState<number>(0);
+  const [traineeCount, setTraineeCount] = useState<number>(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
+    setLoading(true);
+    try {
       // Get current user
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) return;
@@ -43,7 +47,17 @@ export default function DashboardPage() {
           .select("id", { count: "exact", head: true });
         setMembersCount(members || 0);
       }
-    };
+
+      const trainees = await getActiveTrainees();
+      setTraineeCount(trainees.length);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [supabase]);
 
@@ -54,25 +68,45 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
-        <div className="h-16 flex items-center justify-start border-b px-4 w-full">
+        <div className="h-16 flex items-center justify-space-around border-b px-4 w-full">
           <h1 className="text-2xl font-bold ">Dashboard</h1>
+          <div className="flex-1" />
+          <button
+            className="ml-4 text-sm  hover:underline"
+            onClick={() => fetchData()}
+          >
+            <RefreshCw className="inline mr-1" />
+          </button>
         </div>
         <div className="flex-1 p-4 bg-muted/10">
           <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             {member?.role === "admin" && (
               <MetricCard
                 title="Total Members"
-                value={formatNumber(membersCount)}
+                value={loading ? "Loading.." : formatNumber(membersCount)}
                 description="active committee members"
-                icon={<Users />}
+                icon={
+                  loading ? <RefreshCw className="animate-spin" /> : <Users />
+                }
                 className="xl:col-span-2"
               />
             )}
             <MetricCard
               title="Total Programs"
-              value={formatNumber(programsCount)}
+              value={loading ? "Loading.." : formatNumber(programsCount)}
               description="active programs in the system"
-              icon={<BookOpen />}
+              icon={
+                loading ? <RefreshCw className="animate-spin" /> : <BookOpen />
+              }
+              className="xl:col-span-2"
+            />
+            <MetricCard
+              title="Total Active Trainees"
+              value={loading ? "Loading.." : formatNumber(traineeCount)}
+              description="active trainees in the system"
+              icon={
+                loading ? <RefreshCw className="animate-spin" /> : <Users />
+              }
               className="xl:col-span-2"
             />
           </div>

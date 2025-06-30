@@ -13,6 +13,8 @@ import {
   CircleDotDashed,
   Edit,
   Mail,
+  RefreshCw,
+  Trash,
   User,
   Users,
 } from "lucide-react";
@@ -597,8 +599,10 @@ export default function SelectedTrainee() {
               try {
                 if (activeProgramAssignment) {
                   await deleteProgramAssignment(activeProgramAssignment.id);
+                  setActiveProgramAssignment(null);
+                  setActiveProgram(null);
                   toast("Program assignment deleted successfully", {
-                    description: `Program assignment for ${trainee?.firstname} ${trainee?.lastname} has been deleted.`,
+                    description: "The program assignment has been deleted.",
                   });
                   await getTrainee(params.id);
                 }
@@ -609,6 +613,8 @@ export default function SelectedTrainee() {
                 });
               } finally {
                 setProgramLoader(false);
+                setActiveProgramAssignment(null);
+                setActiveProgram(null);
               }
             }}
           >
@@ -755,6 +761,11 @@ export default function SelectedTrainee() {
                 // Call the service to delete the program assignment
                 if (assignmentId) {
                   await deleteProgramAssignment(assignmentId);
+                  setActiveProgramAssignment(null);
+                  setActiveProgram(null);
+                  toast("Program assignment deleted successfully", {
+                    description: "The program assignment has been deleted.",
+                  });
                 }
               } catch (error) {
                 console.error("Error deleting program assignment:", error);
@@ -778,11 +789,32 @@ export default function SelectedTrainee() {
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
         <div className="h-16 flex items-center justify-start border-b px-4 w-full">
-          <h1 className="text-2xl font-bold">Member</h1>
-          <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
-          <h1 className="text-2xl font-bold">
-            {trainee?.firstname} {trainee?.lastname}
-          </h1>
+          <Button
+            variant="ghost"
+            className="text-lg"
+            onClick={() => redirect("/trainees")}
+          >
+            Trainees
+          </Button>
+          <ChevronRight className="h-4 w-4 mr-4" />
+          <div className="flex items-center space-x-2">
+            <span className="text-lg font-semibold">
+              {trainee?.firstname} {trainee?.lastname}
+            </span>
+          </div>
+          <div className="flex-1"></div>
+          {/* Refresh button */}
+          <Button
+            variant="ghost"
+            onClick={() => getTrainee(params.id)}
+            disabled={loading}
+          >
+            {loading ? (
+              <RefreshCw className="animate-spin h-4 w-4" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
         </div>
         <div className="flex-1 p-4 bg-muted/10 flex flex-col xl:flex-row gap-4 ">
           {/* Profile Column */}
@@ -893,8 +925,8 @@ export default function SelectedTrainee() {
                         variant="outline"
                         onClick={() => handleClearProgramAssignment()}
                       >
-                        <ChevronRight className="h-4 w-4 mr-2" />
-                        Clear Program
+                        <Trash className="h-4 w-4 mr-2" />
+                        Delete assignment
                       </Button>
                       <Button
                         variant="default"
@@ -1076,6 +1108,14 @@ export default function SelectedTrainee() {
       {programDialog}
       {finishProgramDialog}
       {customDialog}
+      {/* Loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="text-white">
+            <RefreshCw className="animate-spin" />
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

@@ -118,3 +118,36 @@ export async function getTraineeById(id: string) {
   if (error) throw new Error(`Error fetching trainee ${id}: ${error.message}`);
   return data;
 }
+
+export async function getTraineeCount() {
+  const { count, error } = await supabase
+    .from("trainee")
+    .select("*", { count: "exact", head: true }); // no data, just count
+
+  if (error) throw new Error(`Error counting trainees: ${error.message}`);
+  return count ?? 0;
+}
+
+export async function getActiveTrainees() {
+  const { data, error } = await supabase
+    .from("trainee")
+    .select("*")
+    .eq("active", true)
+    .order("lastname", { ascending: true });
+
+  if (error)
+    throw new Error(`Error fetching active trainees: ${error.message}`);
+  return data;
+}
+
+export async function getInactiveTrainees() {
+  const { data, error } = await supabase
+    .from("trainee")
+    .select("*")
+    .eq("active", false)
+    .order("lastname", { ascending: true });
+
+  if (error)
+    throw new Error(`Error fetching inactive trainees: ${error.message}`);
+  return data;
+}
