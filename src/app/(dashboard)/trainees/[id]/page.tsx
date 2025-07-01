@@ -18,13 +18,14 @@ import {
   CircleDotDashed,
   Edit,
   Mail,
+  MoreHorizontal,
   RefreshCw,
   Trash,
   User,
   Users,
 } from "lucide-react";
 import { redirect, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,7 +38,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
   createProgressLog,
   deleteProgressLog,
@@ -58,6 +58,7 @@ import { Program } from "@/models/program";
 import { DialogProps } from "@/models/etc";
 import { getAuditLogsForTrainee } from "@/lib/services/trainee-audit-log";
 import RichTextEditor from "@/components/rte";
+import { useTopbar } from "@/app/context/topbar-context";
 
 export default function SelectedTrainee() {
   const { member } = useMember();
@@ -75,6 +76,7 @@ export default function SelectedTrainee() {
   const [allTraineeAuditLogs, setAllTraineeAuditLogs] = useState<
     TraineeAuditLog[]
   >([]);
+  const { setTopbar } = useTopbar();
 
   const [programNotes, setProgramNotes] = useState<string>("");
   // Loading state
@@ -99,6 +101,7 @@ export default function SelectedTrainee() {
     footer: null,
   };
   const [dialogData, setDialogData] = useState<DialogProps>(DIALOG_DEFAULTS);
+  const [showStats, setShowStats] = useState(false);
 
   // Create timeline events and sort by date
   const daysJoined = useMemo(() => {
@@ -136,8 +139,8 @@ export default function SelectedTrainee() {
   const getTrainee = async (id: string) => {
     setLoading(true);
     try {
-      const response = await getTraineeById(id);
-      setTrainee(response as Trainee);
+      const resTrainee = await getTraineeById(id);
+      setTrainee(resTrainee as Trainee);
       const resProgressLogs = await getProgressLogsForTrainee(id);
       setProgressLogs(resProgressLogs);
       const resActiveProgram = await getActiveProgramForTrainee(id);
@@ -167,16 +170,113 @@ export default function SelectedTrainee() {
     if (params.id) {
       getTrainee(params.id);
     }
-  }, [params.id]);
+    return () => {
+      setTopbar(null); // Clear topbar when component unmounts
+    };
+  }, [params.id, setTopbar]);
+
+  useEffect(() => {
+    setTopbar(
+      <div className="h-16 flex items-center justify-start px-4 w-full">
+        <Button
+          variant="ghost"
+          className="text-lg"
+          onClick={() => redirect("/trainees")}
+        >
+          Trainees
+        </Button>
+        <ChevronRight className="h-4 w-4 mr-4" />
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-semibold">
+            {trainee?.firstname} {trainee?.lastname}
+          </span>
+        </div>
+        <div className="flex-1"></div>
+        {/* Desktop Stats */}
+        <div className="hidden md:flex items-center gap-4 mr-4">
+          <div className="flex gap-4">
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-muted-foreground">Days</span>
+              <span className="text-base font-bold text-blue-600">
+                {daysJoined}
+              </span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-muted-foreground">Logs</span>
+              <span className="text-base font-bold text-green-600">
+                {progressLogs.length}
+              </span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-muted-foreground">Programs</span>
+              <span className="text-base font-bold text-purple-600">
+                {allTraineePrograms.filter((a) => a.done_at !== null).length}/
+                {allTraineePrograms.length}
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* Mobile More Button */}
+        <div className="md:hidden mr-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowStats((v) => !v)}
+            aria-label="Show stats"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </Button>
+          {showStats && (
+            <div className="absolute right-4 top-16 z-50 bg-background border rounded-lg shadow-lg p-4 flex gap-6">
+              <div className="flex flex-col items-center">
+                <span className="text-xs text-muted-foreground">Days</span>
+                <span className="text-base font-bold text-blue-600">
+                  {daysJoined}
+                </span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-xs text-muted-foreground">Logs</span>
+                <span className="text-base font-bold text-green-600">
+                  {progressLogs.length}
+                </span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-xs text-muted-foreground">Programs</span>
+                <span className="text-base font-bold text-purple-600">
+                  {allTraineePrograms.filter((a) => a.done_at !== null).length}/
+                  {allTraineePrograms.length}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          onClick={() => getTrainee(params.id)}
+          disabled={loading}
+        >
+          {loading ? (
+            <RefreshCw className="animate-spin h-4 w-4" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    );
+  }, [
+    params.id,
+    trainee,
+    setTopbar,
+    loading,
+    daysJoined,
+    progressLogs.length,
+    allTraineePrograms,
+    showStats, // add showStats to dependencies
+  ]);
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`;
   };
-
-  if (trainee === null && !loading) {
-    redirect("/trainees");
-    return null;
-  }
 
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -810,327 +910,308 @@ export default function SelectedTrainee() {
     }));
   }, []);
 
-  return (
-    <ProtectedRoute>
-      <div className="flex flex-col min-h-screen w-full">
-        <div className="h-16 flex items-center justify-start border-b px-4 w-full">
-          <Button
-            variant="ghost"
-            className="text-lg"
-            onClick={() => redirect("/trainees")}
-          >
-            Trainees
-          </Button>
-          <ChevronRight className="h-4 w-4 mr-4" />
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-semibold">
-              {trainee?.firstname} {trainee?.lastname}
-            </span>
+  // Place conditional return AFTER all hooks
+  if (trainee === null && !loading) {
+    redirect("/trainees");
+    return null;
+  }
+
+  const profileColumn = (
+    <>
+      {/* Profile Card */}
+      <Card>
+        <CardContent>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-20 w-20">
+                <AvatarFallback className="text-lg">
+                  {getInitials(
+                    trainee?.firstname || "",
+                    trainee?.lastname || ""
+                  )}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold break-words">
+                    {trainee?.firstname} {trainee?.lastname}
+                  </h1>
+                  <Badge variant={trainee?.active ? "default" : "secondary"}>
+                    {trainee?.active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    <span className="break-all">{trainee?.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>{trainee?.originalTeam}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      Joined{" "}
+                      {new Date(
+                        trainee?.created_at || new Date()
+                      ).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <Button
+                onClick={handleOpenUpdateDialog}
+                variant="outline"
+                className="w-full sm:w-50 flex items-center justify-center"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            </div>
           </div>
-          <div className="flex-1"></div>
-          {/* Refresh button */}
-          <Button
-            variant="ghost"
-            onClick={() => getTrainee(params.id)}
-            disabled={loading}
-          >
-            {loading ? (
-              <RefreshCw className="animate-spin h-4 w-4" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-        <div className="flex-1 p-4 bg-muted/10 flex flex-col xl:flex-row gap-4 ">
-          {/* Profile Column */}
-          <div className="flex-1 flex-col flex items-stretch">
-            {/* Profile Card */}
-            <Card className="">
-              <CardContent>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                  <div className="flex items-center space-x-4">
-                    <Avatar className="h-20 w-20">
-                      <AvatarFallback className="text-lg ">
-                        {getInitials(
-                          trainee?.firstname || "",
-                          trainee?.lastname || ""
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <h1 className="text-2xl font-bold">
-                          {trainee?.firstname} {trainee?.lastname}
-                        </h1>
-                        <Badge
-                          variant={trainee?.active ? "default" : "secondary"}
-                        >
-                          {trainee?.active ? "Active" : "Inactive"}
-                        </Badge>
+        </CardContent>
+      </Card>
+      {trainee?.active ? (
+        <>
+          {/* Assigned Program Card */}
+          <Card>
+            <CardContent>
+              {activeProgram ? (
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <BookCheck className="h-4 w-4" />
+                      <span className="text-lg font-semibold break-words">
+                        Active Program: {activeProgram.name}
+                      </span>
+                    </div>
+                    <div className="text-sm mb-4 break-words">
+                      {activeProgram.description}
+                    </div>
+                    <div className="text-sm flex flex-col sm:flex-row text-muted-foreground gap-2 sm:gap-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>
+                          Assigned on{" "}
+                          {new Date(
+                            activeProgramAssignment?.created_at || new Date()
+                          ).toLocaleDateString()}
+                        </span>
                       </div>
-                      <div className="flex flex-col space-y-1 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-2">
-                          <Mail className="h-4 w-4" />
-                          <span>{trainee?.email}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Users className="h-4 w-4" />
-                          <span>{trainee?.originalTeam}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Joined{" "}
-                            {new Date(
-                              trainee?.created_at || new Date()
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        <span className="break-words">
+                          Assigned by:{" "}
+                          {`${activeProgramAssignment?.assignedBy?.firstname} ${activeProgramAssignment?.assignedBy?.lastname}` ||
+                            "-"}
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
                     <Button
-                      onClick={handleOpenUpdateDialog}
                       variant="outline"
-                      className="w-50 flex items-center justify-space-around"
+                      onClick={handleClearProgramAssignment}
+                      className="w-full sm:w-auto"
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Profile
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete assignment
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={() => setOpenConfirmFinishProgram(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <BookCheck className="h-4 w-4 mr-2" />
+                      Finish Program
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            {trainee?.active ? (
-              <>
-                {/* Assigned Program Card */}
-                <Card className=" mt-4">
-                  <CardContent>
-                    {activeProgram ? (
-                      <div className="space-y-2 flex flex-row items-start justify-between">
-                        <div className="flex flex-col space-x-2">
-                          <div className="flex items-center space-x-2">
-                            <BookCheck className="h-4 w-4" />
-                            <span className="text-lg font-semibold">
-                              Active Program: {activeProgram.name}
-                            </span>
-                          </div>
-                          <div className="text-sm mb-4">
-                            {activeProgram.description}
-                          </div>
-                          <div className="text-sm flex flex-row text-muted-foreground space-x-4">
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                Assigned on{" "}
-                                {new Date(
-                                  activeProgramAssignment?.created_at ||
-                                    new Date()
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <User className="h-4 w-4" />
-                              <span>
-                                Assigned by:{" "}
-                                {`${activeProgramAssignment?.assignedBy?.firstname} ${activeProgramAssignment?.assignedBy?.lastname}` ||
-                                  "-"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end justify-end space-y-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => handleClearProgramAssignment()}
-                          >
-                            <Trash className="h-4 w-4 mr-2" />
-                            Delete assignment
-                          </Button>
-                          <Button
-                            variant="default"
-                            onClick={() => {
-                              setOpenConfirmFinishProgram(true);
-                            }}
-                          >
-                            <BookCheck className="h-4 w-4 mr-2" />
-                            Finish Program
-                          </Button>
-                        </div>
-                      </div>
+              ) : (
+                <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <span>Not assigned in any program</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleAssignProgram}
+                    disabled={programLoader}
+                    className="w-full sm:w-auto"
+                  >
+                    {programLoader ? (
+                      <CircleDotDashed className="h-4 w-4" />
                     ) : (
-                      <div className="text-sm text-muted-foreground flex justify-center items-space-between ">
-                        <div className="flex items-center space-x-2">
-                          <span>Not assigned in any program</span>
-                        </div>
-                        <div className="flex-1"></div>
-                        <Button
-                          variant="outline"
-                          onClick={handleAssignProgram}
-                          disabled={programLoader}
-                        >
-                          {programLoader ? (
-                            <CircleDotDashed className="h-4 w-4" />
-                          ) : (
-                            <Book className="h-4 w-4 mr-2" />
-                          )}
-                          {programLoader ? "Loading..." : "Assign Program"}
-                        </Button>
-                      </div>
+                      <Book className="h-4 w-4 mr-2" />
                     )}
-                  </CardContent>
-                </Card>
-                {/* Quick Progress Log Form Card */}
-                <Card className="flex flex-1 mt-4">
-                  <CardContent className="flex flex-1 flex-col">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleProgressLogSubmit(e);
-                      }}
-                      className="space-y-4 flex flex-1 flex-col"
-                    >
-                      <div className="flex-0 grid grid-cols-1 gap-4">
-                        <Label htmlFor="title">Quick Progress Log</Label>
-                        <Input
-                          id="title"
-                          name="title"
-                          placeholder="Enter progress log title"
-                          required
-                          value={progressForm.title}
-                          onChange={(e) =>
-                            setProgressForm((prev) => ({
-                              ...prev,
-                              title: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="flex-1 flex flex-col gap-4">
-                        <div className="flex-0">
-                          <Label htmlFor="description">Description</Label>
-                        </div>
-                        <div className="flex flex-1">
-                          <RichTextEditor
-                            value={progressForm.description}
-                            onChange={handleDescriptionChange}
-                            placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
-                          />
-                        </div>
-                      </div>
-                      {/* form clear and submit */}
-                      <div className="flex-0 flex flex-row space-x-4 justify-end">
-                        {activeProgram && (
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="airplane-mode"
-                              checked={progressForm.programId !== undefined}
-                              onCheckedChange={(checked: boolean) =>
-                                setProgressForm((prev) => ({
-                                  ...prev,
-                                  programId: checked
-                                    ? activeProgramAssignment?.id
-                                    : undefined,
-                                }))
-                              }
-                            />
-                            <Label htmlFor="airplane-mode">
-                              Related to {activeProgram.name}
-                            </Label>
-                          </div>
-                        )}
-                        <div className="flex-1" />
-                        <Button
-                          disabled={creating}
-                          className="w-full flex-0 "
-                          variant="outline"
-                        >
-                          Clear
-                        </Button>
-
-                        <Button
-                          type="submit"
-                          disabled={creating}
-                          className="w-full flex-0 "
-                        >
-                          {creating ? "Creating..." : "Add Progress Log"}
-                        </Button>
-                      </div>
-                    </form>
-                  </CardContent>
-                </Card>
-              </>
-            ) : (
-              <Card className=" mt-4">
-                <CardContent className="text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Trainee is Inactive. No progress logs or program assignments
-                    can be added.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Please activate the trainee to enable progress tracking.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    You can edit the trainee profile to activate them.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            {/* Stats Card */}
-            <Card className=" mt-4">
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    {programLoader ? "Loading..." : "Assign Program"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          {/* Quick Progress Log Form Card */}
+          <Card className="flex-1 flex">
+            <CardContent className="flex-1 flex flex-col justify-stretch">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleProgressLogSubmit(e);
+                }}
+                className="space-y-4 flex flex-col h-full justify-stretch"
+              >
+                <div className="grid grid-cols-1 gap-4">
+                  <Label htmlFor="title">Quick Progress Log</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    placeholder="Enter progress log title"
+                    required
+                    value={progressForm.title}
+                    onChange={(e) =>
+                      setProgressForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex flex-1 flex-col gap-4 justify-stretch">
                   <div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {daysJoined}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Days since joining
-                    </div>
+                    <Label htmlFor="description">Description</Label>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-600">
-                      {progressLogs.length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Progress logs recorded
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-purple-600">
-                      {
-                        allTraineePrograms.filter((a) => a.done_at !== null)
-                          .length
-                      }
-                      /{allTraineePrograms.length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Programs completed
-                    </div>
+                  <div className="flex-1">
+                    <RichTextEditor
+                      value={progressForm.description}
+                      onChange={handleDescriptionChange}
+                      placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-          {/* Timeline  */}
-          <div className="flex-1 flex-col">
-            <Card className="h-full p-6 flex">
-              <div className="flex-1 h-full overflow-auto">
-                {trainee && (
-                  <TimelineView
-                    trainee={trainee}
-                    dataLogs={progressLogs}
-                    dataAssignments={allTraineePrograms}
-                    traineeAuditLogs={allTraineeAuditLogs}
-                    deleteProgressLog={handleDeleteProgressLog}
-                    deleteProgramAssignment={handleDeleteProgramAssignment}
-                  />
-                )}
+                {/* form clear and submit */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-end">
+                  {activeProgram && (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="airplane-mode"
+                        checked={progressForm.programId !== undefined}
+                        onCheckedChange={(checked: boolean) =>
+                          setProgressForm((prev) => ({
+                            ...prev,
+                            programId: checked
+                              ? activeProgramAssignment?.id
+                              : undefined,
+                          }))
+                        }
+                      />
+                      <Label htmlFor="airplane-mode">
+                        Related to {activeProgram.name}
+                      </Label>
+                    </div>
+                  )}
+                  <div className="flex-1" />
+                  <Button
+                    disabled={creating}
+                    className="w-full sm:w-auto"
+                    variant="outline"
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={creating}
+                    className="w-full sm:w-auto"
+                  >
+                    {creating ? "Creating..." : "Add Progress Log"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <Card>
+          <CardContent className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Trainee is Inactive. No progress logs or program assignments can
+              be added.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Please activate the trainee to enable progress tracking.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              You can edit the trainee profile to activate them.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {/* Stats Card */}
+      {/* <Card>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-blue-600">
+                {daysJoined}
               </div>
-            </Card>
+              <div className="text-sm text-muted-foreground">
+                Days since joining
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-600">
+                {progressLogs.length}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Progress logs recorded
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-purple-600">
+                {allTraineePrograms.filter((a) => a.done_at !== null).length}/
+                {allTraineePrograms.length}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Programs completed
+              </div>
+            </div>
           </div>
+        </CardContent>
+      </Card> */}
+    </>
+  );
+
+  const timelineColumn = (
+    <Card className="flex-1 flex flex-col min-h-0">
+      {" "}
+      {/* min-h-0 is important for flex children */}
+      <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+        {" "}
+        {/* Remove extra padding */}
+        {trainee && (
+          <TimelineView
+            trainee={trainee}
+            dataLogs={progressLogs}
+            dataAssignments={allTraineePrograms}
+            traineeAuditLogs={allTraineeAuditLogs}
+            deleteProgressLog={handleDeleteProgressLog}
+            deleteProgramAssignment={handleDeleteProgramAssignment}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <ProtectedRoute>
+      <div className="flex-1 min-h-full w-full sm:p-4 bg-muted/10 flex justify-stretch flex-col xl:flex-row gap-4">
+        {/* Profile Column */}
+        <div className="flex-1 flex flex-col items-stretch gap-4 ">
+          {profileColumn}
         </div>
+        {/* Timeline  */}
+        <div className="flex-1 flex flex-col ">{timelineColumn}</div>
       </div>
       {traineeDialog}
       {progressDialog}

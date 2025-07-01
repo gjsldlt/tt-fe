@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { MetricCard } from "@/components/metric-card";
 import { BookOpen, RefreshCw, Users } from "lucide-react";
 import { getActiveTrainees } from "@/lib/services/trainee.services";
+import { useTopbar } from "@/app/context/topbar-context";
 
 type Member = {
   id: string;
@@ -12,6 +13,7 @@ type Member = {
 };
 
 export default function DashboardPage() {
+  const { setTopbar } = useTopbar();
   const supabase = createClient();
   const [loading, setLoading] = useState<boolean>(true);
   const [member, setMember] = useState<Member | null>(null);
@@ -61,6 +63,24 @@ export default function DashboardPage() {
     fetchData();
   }, [supabase, fetchData]);
 
+  useEffect(() => {
+    setTopbar(
+      <div className="h-16 flex items-center justify-space-around border-b px-4 w-full">
+        <h1 className="text-2xl font-bold ">Dashboard</h1>
+        <div className="flex-1" />
+        <button
+          className="ml-4 text-sm  hover:underline"
+          onClick={() => fetchData()}
+        >
+          <RefreshCw className="inline mr-1" />
+        </button>
+      </div>
+    );
+    return () => {
+      setTopbar(null);
+    };
+  }, [fetchData, setTopbar]);
+
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("en-US").format(Math.floor(num));
   };
@@ -68,16 +88,6 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
-        <div className="h-16 flex items-center justify-space-around border-b px-4 w-full">
-          <h1 className="text-2xl font-bold ">Dashboard</h1>
-          <div className="flex-1" />
-          <button
-            className="ml-4 text-sm  hover:underline"
-            onClick={() => fetchData()}
-          >
-            <RefreshCw className="inline mr-1" />
-          </button>
-        </div>
         <div className="flex-1 p-4 bg-muted/10">
           <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             {member?.role === "admin" && (

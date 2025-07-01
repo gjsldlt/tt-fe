@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { Delete, RefreshCw, View } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { useTopbar } from "@/app/context/topbar-context";
 
 export default function ProgramsPage() {
   const { member } = useMember();
@@ -32,6 +33,7 @@ export default function ProgramsPage() {
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [teams, setTeams] = useState<string[]>(["FED", "AEM", "UI/UX"]);
+  const { setTopbar } = useTopbar();
 
   // Column variables for DataTable
   const defaultColumns: ColumnDef<Trainee>[] = useMemo(
@@ -201,7 +203,29 @@ export default function ProgramsPage() {
 
   useEffect(() => {
     fetchTrainees();
-  }, []);
+    setTopbar(
+      <>
+        <h1 className="text-2xl font-bold">Trainees</h1>
+        <div className="flex-1" />
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="ml-4"
+            onClick={fetchTrainees}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={toggleCreateDialog}>
+            + New Trainee
+          </Button>
+        </div>
+      </>
+    );
+    return () => {
+      setTopbar(null); // Clear the topbar when component unmounts
+    };
+  }, [setTopbar, fetchTrainees]);
 
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -416,22 +440,6 @@ export default function ProgramsPage() {
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
-        <div className="h-16 flex items-center justify-start align-center border-b px-4 space-x-2 w-full">
-          <h1 className="text-2xl font-bold ">Trainees</h1>
-          <div className="flex-1" />
-          {/* Refresh button */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="ml-4"
-            onClick={fetchTrainees}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" onClick={toggleCreateDialog}>
-            + New Trainee
-          </Button>
-        </div>
         <div className="flex-1 p-4 bg-muted/10">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">

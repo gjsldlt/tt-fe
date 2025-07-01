@@ -5,6 +5,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -137,50 +138,28 @@ function ProgressLogCard({
   deleteProgressLog: (logId: string) => void;
 }) {
   return (
-    <Card className="border-l-4 border-l-green-500 w-full">
-      <CardHeader className="pb-3 px-3 sm:px-6">
+    <Card className="border-l-4 border-l-green-500 w-full flex flex-col justify-stretch items-stretch gap-y-2">
+      <CardHeader className="sm:px-6">
         <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
-          <div className="flex items-start space-x-3 min-w-0 flex-1">
-            <div className="p-2 bg-green-100 rounded-full flex-shrink-0">
-              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <div className="p-1.5 bg-green-100 rounded-full flex-shrink-0">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg font-semibold leading-tight mb-2">
+              <CardTitle className="text-base sm:text-lg font-semibold leading-tight">
                 {event.data.title}
               </CardTitle>
-              <CardDescription className="space-y-2 sm:space-y-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
-                  {event.data.programAssignmentId && (
-                    <div className="flex items-center space-x-1">
-                      <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                      <span>{event.data.programAssignment?.program?.name}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span>{new Date(event.date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate">
-                      {event.data.created_by.firstname}{" "}
-                      {event.data.created_by.lastname}
-                    </span>
-                  </div>
-                </div>
-              </CardDescription>
             </div>
           </div>
-          <div className="flex-shrink-0 flex items-center justify-center space-x-2">
+          <div className="flex-shrink-0 flex items-center justify-start space-x-2 md:justify-center">
             <Badge
               variant="outline"
               className="bg-green-50 text-green-700 border-green-200 text-xs"
             >
               Progress Log
             </Badge>
-            {/* Delete Progress log */}
             <button
-              className="text-red-400 hover:text-red-800 text-xs sm:text-sm "
+              className=" hover:text-red-400 text-xs sm:text-sm transition-colors mb-1"
               onClick={() => {
                 deleteProgressLog(event.data.id);
               }}
@@ -190,12 +169,32 @@ function ProgressLogCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-3 sm:px-6">
+      <CardContent className="flex-1 sm:px-6">
         <div
           className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap break-words"
           dangerouslySetInnerHTML={{ __html: event.data.description }}
         />
       </CardContent>
+      <CardFooter className="flex-1 space-y-2 sm:space-y-0 text-xs sm:text-sm px-3 sm:px-6 text-stone-500">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
+          {event.data.programAssignmentId && (
+            <div className="flex items-center space-x-1">
+              <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{event.data.programAssignment?.program?.name}</span>
+            </div>
+          )}
+          <div className="flex items-center space-x-1">
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span>{new Date(event.date).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="truncate">
+              {event.data.created_by.firstname} {event.data.created_by.lastname}
+            </span>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
@@ -217,10 +216,12 @@ function ProgramAssignmentCard({
   const badgeText = isCompleted ? "Completed" : "In Progress";
 
   return (
-    <Card className={`border-l-4 ${borderColor} w-full`}>
-      <CardHeader className="pb-3 px-3 sm:px-6">
+    <Card
+      className={`border-l-4 ${borderColor} w-full flex flex-col justify-stretch items-stretch gap-y-2`}
+    >
+      <CardHeader className="px-3 sm:px-6">
         <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
-          <div className="flex items-start space-x-3 min-w-0 flex-1">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
             <div className={`p-2 ${iconBgColor} rounded-full flex-shrink-0`}>
               {isCompleted ? (
                 <CheckCircle className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColor}`} />
@@ -229,26 +230,9 @@ function ProgramAssignmentCard({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg font-semibold leading-tight mb-2">
+              <CardTitle className="text-base sm:text-lg font-semibold leading-tight">
                 {event.data.program?.name || `Program ${event.data.program_id}`}
               </CardTitle>
-              <CardDescription className="space-y-2 sm:space-y-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span>
-                      Assigned {new Date(event.date).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate">
-                      {event.data.assignedBy?.firstname}{" "}
-                      {event.data.assignedBy?.lastname}
-                    </span>
-                  </div>
-                </div>
-              </CardDescription>
             </div>
           </div>
           <div className="flex items-center space-x-2 flex-shrink-0">
@@ -257,7 +241,7 @@ function ProgramAssignmentCard({
             </Badge>
             {/* Delete Progress log */}
             <button
-              className="text-red-400 hover:text-red-800 text-xs sm:text-sm "
+              className=" hover:text-red-400 text-xs sm:text-sm transition-colors mb-1"
               onClick={() => {
                 deleteProgramAssignment(event.data.id);
               }}
@@ -291,6 +275,21 @@ function ProgramAssignmentCard({
           </div>
         )}
       </CardContent>
+      <CardFooter className="flex-1 space-y-2 sm:space-y-0 text-xs sm:text-sm px-3 sm:px-6 text-stone-500">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
+          <div className="flex items-center space-x-1">
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span>Assigned {new Date(event.date).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="truncate">
+              {event.data.assignedBy?.firstname}{" "}
+              {event.data.assignedBy?.lastname}
+            </span>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
@@ -298,33 +297,17 @@ function ProgramAssignmentCard({
 function AuditLogCard({ event }: { event: TraineeAuditLog }) {
   const changesCount = Object.keys(event.changes).length;
   return (
-    <Card className="border-l-4 border-l-amber-500 w-full">
-      <CardHeader className="pb-3 px-3 sm:px-6">
+    <Card className="border-l-4 border-l-amber-500 w-full  gap-y-2">
+      <CardHeader className="px-3 sm:px-6">
         <div className="flex flex-col space-y-3 lg:flex-row lg:items-start lg:justify-between lg:space-y-0">
-          <div className="flex items-start space-x-3 min-w-0 flex-1">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
             <div className="p-2 bg-amber-100 rounded-full flex-shrink-0">
               <Edit3 className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base sm:text-lg font-semibold leading-tight mb-2">
+              <CardTitle className="text-base sm:text-lg font-semibold leading-tight">
                 Profile Updated
               </CardTitle>
-              <CardDescription className="space-y-2 sm:space-y-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span>
-                      {new Date(event.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate">
-                      {`${event.updatedBy?.firstname} ${event.updatedBy?.lastname}`}
-                    </span>
-                  </div>
-                </div>
-              </CardDescription>
             </div>
           </div>
           <div className="flex items-center space-x-2 flex-shrink-0">
@@ -369,24 +352,21 @@ function AuditLogCard({ event }: { event: TraineeAuditLog }) {
             </div>
           ))}
         </div>
-
-        {/* Note */}
-        {event.note && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <FileText className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <span className="text-xs text-blue-600 uppercase tracking-wide font-medium">
-                  Note
-                </span>
-                <p className="text-sm text-blue-800 mt-1 leading-relaxed">
-                  {event.note}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </CardContent>
+      <CardFooter className="spflex-1 space-y-2 sm:space-y-0 text-xs sm:text-sm px-3 sm:px-6 text-stone-500">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-xs sm:text-sm">
+          <div className="flex items-center space-x-1">
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span>{new Date(event.created_at).toLocaleDateString()}</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <User className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+            <span className="truncate">
+              {`${event.updatedBy?.firstname} ${event.updatedBy?.lastname}`}
+            </span>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
@@ -487,36 +467,28 @@ export function TimelineView({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Scrollable Timeline Content */}
-      <div
-        className="flex-1 overflow-y-auto"
-        style={{ position: "relative", maxHeight: "700px" }}
-      >
-        <div className="p-6">
-          <div className="relative max-w-4xl mx-auto">
-            {/* Timeline line */}
-            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
-
-            {/* Timeline events */}
-            <div className="space-y-6 ml-5">
-              {timelineEvents.map((event, index) => (
-                <div
-                  key={`${event.type}-${index}`}
-                  className="relative flex items-start space-x-4"
-                >
-                  {/* Timeline dot */}
-                  <div className="relative z-5 flex-shrink-0">
-                    <div className="w-3 h-3 bg-primary rounded-full border-2 border-background shadow-sm" />
-                  </div>
-
-                  {/* Event content */}
-                  <div className="flex-1 min-w-0 pb-2 pl-5">
-                    {renderTimelineEvent(event)}
-                  </div>
+    <div className="flex-1 flex flex-col max-h-[80vh] overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
+        <div className="relative w-full">
+          {/* Timeline line */}
+          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
+          {/* Timeline events */}
+          <div className="space-y-6 ml-5">
+            {timelineEvents.map((event, index) => (
+              <div
+                key={`${event.type}-${index}`}
+                className="relative flex items-start space-x-4"
+              >
+                {/* Timeline dot */}
+                <div className="relative z-5 flex-shrink-0">
+                  <div className="w-3 h-3 bg-primary rounded-full border-2 border-background shadow-sm" />
                 </div>
-              ))}
-            </div>
+                {/* Event content */}
+                <div className="flex-1 min-w-0 pb-2 pl-5">
+                  {renderTimelineEvent(event)}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -26,11 +26,13 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Member } from "@/models/member";
+import { useSidebar } from "@/context/sidebar-context";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const { mobileOpen, setMobileOpen } = useSidebar();
 
   // const [userEmail, setUserEmail] = useState<string | null>(null);
   // const [user, setUser] = useState<User | null>(null);
@@ -93,126 +95,156 @@ export function Sidebar() {
   ];
 
   return (
-    <aside
-      className={cn(
-        "border-r flex flex-col justify-between h-screen bg-background text-foreground transition-all duration-200",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
-      {/* Top: Project name & collapse button */}
-      <div>
-        <div className="h-16 flex items-center justify-between border-b px-4">
-          <span
-            className={cn(
-              "text-xl font-bold transition-all duration-200",
-              collapsed && "opacity-0 w-0 overflow-hidden"
-            )}
-          >
-            TraineeTracker
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed((c) => !c)}
-            className="ml-auto"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {!collapsed ? (
-              <ChevronsRightLeft size={20} />
-            ) : (
-              <ChevronsLeftRight size={20} />
-            )}
-          </Button>
-        </div>
+    <>
+      {/* Mobile sidebar toggle button */}
+      {/* <button
+        className="fixed top-4 left-4 z-40 md:hidden bg-background border rounded-full p-2 shadow"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open sidebar"
+        type="button"
+      >
+        <Menu size={24} />
+      </button> */}
 
-        {/* Nav menu */}
-        <nav className={cn("px-2 py-6 space-y-2", collapsed && "px-2")}>
-          {navItems
-            .filter(
-              (item) => !member || (member && item.roles.includes(member.role))
-            )
-            .map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted transition-all",
-                  pathname.startsWith(item.href)
-                    ? "bg-muted font-semibold"
-                    : "",
-                  collapsed && "justify-center px-2",
-                  !collapsed && "gap-3"
-                )}
-              >
-                <item.icon size={20} className="shrink-0" />
-                <span
+      {/* Overlay for mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "border-r flex flex-col justify-between h-screen bg-background text-foreground transition-all duration-200 z-40 fixed md:static top-0 left-0",
+          collapsed ? "w-16" : "w-64",
+          // Mobile: hidden by default, slide-in when open
+          "fixed top-0 left-0 md:static",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 ",
+          "md:translate-x-0 transition-transform"
+        )}
+        style={{ minWidth: collapsed ? "4rem" : "16rem" }}
+      >
+        {/* Top: Project name & collapse button */}
+        <div>
+          <div className="h-16 flex items-center justify-between border-b px-4">
+            <span
+              className={cn(
+                "text-xl font-bold transition-all duration-200",
+                collapsed && "opacity-0 w-0 overflow-hidden"
+              )}
+            >
+              TraineeTracker
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (mobileOpen) setMobileOpen(false);
+                else setCollapsed((c) => !c);
+              }}
+              className="ml-auto"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {!collapsed ? (
+                <ChevronsRightLeft size={20} />
+              ) : (
+                <ChevronsLeftRight size={20} />
+              )}
+            </Button>
+          </div>
+
+          {/* Nav menu */}
+          <nav className={cn("px-2 py-6 space-y-2", collapsed && "px-2")}>
+            {navItems
+              .filter(
+                (item) =>
+                  !member || (member && item.roles.includes(member.role))
+              )
+              .map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
                   className={cn(
-                    "transition-all duration-200",
-                    collapsed && "opacity-0 w-0 overflow-hidden"
+                    "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted transition-all",
+                    pathname.startsWith(item.href)
+                      ? "bg-muted font-semibold"
+                      : "",
+                    collapsed && "justify-center px-2",
+                    !collapsed && "gap-3"
                   )}
                 >
-                  {item.label}
-                </span>
-              </Link>
-            ))}
-        </nav>
-      </div>
-
-      {/* Bottom: Theme + Profile */}
-      <div
-        className={cn(
-          "p-4 border-t space-y-4",
-          collapsed && "px-2 flex-col align-center justify-center"
-        )}
-      >
-        <ThemeToggle collapsed={collapsed} />
-
-        {member && (
-          <div className="text-sm text-muted-foreground flex">
-            <Avatar className="h-11 w-11">
-              <AvatarFallback>
-                {`${member?.firstname[0] ?? ""}${
-                  member?.lastname[0] ?? ""
-                }`.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <div className="ml-3 flex flex-col">
-                <p className="font-medium text-foreground">{`${member?.firstname} ${member?.lastname}`}</p>
-                <p className="text-xs">
-                  <span className="font-semibold">{member?.email}</span>
-                </p>
-                <p className="text-xs">
-                  <span className="font-semibold">
-                    {member?.role.toUpperCase()}
+                  <item.icon size={20} className="shrink-0" />
+                  <span
+                    className={cn(
+                      "transition-all duration-200",
+                      collapsed && "opacity-0 w-0 overflow-hidden"
+                    )}
+                  >
+                    {item.label}
                   </span>
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                </Link>
+              ))}
+          </nav>
+        </div>
+        <div className="flex-1" />
 
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="w-full mt-2">
-              {collapsed ? <LogOut size={20} /> : "Logout"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Are you sure you want to log out?</DialogTitle>
-            </DialogHeader>
-            <DialogFooter className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpenDialog(false)}>
-                Cancel
+        {/* Bottom: Theme + Profile */}
+        <div
+          className={cn(
+            "p-4 border-t space-y-4",
+            collapsed && "px-2 flex-col align-center justify-center"
+          )}
+        >
+          <ThemeToggle collapsed={collapsed} />
+
+          {member && (
+            <div className="text-sm text-muted-foreground flex">
+              <Avatar className="h-11 w-11">
+                <AvatarFallback>
+                  {`${member?.firstname[0] ?? ""}${
+                    member?.lastname[0] ?? ""
+                  }`.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {!collapsed && (
+                <div className="ml-3 flex flex-col">
+                  <p className="font-medium text-foreground">{`${member?.firstname} ${member?.lastname}`}</p>
+                  <p className="text-xs">
+                    <span className="font-semibold">{member?.email}</span>
+                  </p>
+                  <p className="text-xs">
+                    <span className="font-semibold">
+                      {member?.role.toUpperCase()}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full mt-2">
+                {collapsed ? <LogOut size={20} /> : "Logout"}
               </Button>
-              <Button variant="destructive" onClick={logout}>
-                Log out
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </aside>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Are you sure you want to log out?</DialogTitle>
+              </DialogHeader>
+              <DialogFooter className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setOpenDialog(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={logout}>
+                  Log out
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </aside>
+    </>
   );
 }
