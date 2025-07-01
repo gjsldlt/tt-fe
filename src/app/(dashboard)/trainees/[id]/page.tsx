@@ -24,7 +24,7 @@ import {
   Users,
 } from "lucide-react";
 import { redirect, useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,6 +57,7 @@ import { toast } from "sonner";
 import { Program } from "@/models/program";
 import { DialogProps } from "@/models/etc";
 import { getAuditLogsForTrainee } from "@/lib/services/trainee-audit-log";
+import RichTextEditor from "@/components/rte";
 
 export default function SelectedTrainee() {
   const { member } = useMember();
@@ -424,17 +425,21 @@ export default function SelectedTrainee() {
           </div>
           <div className="grid grid-cols-1 gap-4">
             <Label htmlFor="title">Description</Label>
-            <Textarea
+            {/* <Textarea
               id="title"
               name="title"
               placeholder="Enter progress log details"
+              required
+            /> */}
+            <RichTextEditor
+              value={progressForm.description}
               onChange={(e) =>
                 setProgressForm((prev) => ({
                   ...prev,
-                  description: e.target.value,
+                  description: e,
                 }))
               }
-              required
+              placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
             />
           </div>
           <DialogFooter>
@@ -486,12 +491,17 @@ export default function SelectedTrainee() {
           </div>
           <div className="grid grid-cols-1 gap-4">
             <Label htmlFor="notes">Notes</Label>
-            <Textarea
+            {/* <Textarea
               id="notes"
               name="notes"
               placeholder="Add any notes here"
               value={programNotes || ""}
               onChange={(e) => setProgramNotes(e.target.value)}
+            /> */}
+            <RichTextEditor
+              value={programNotes || ""}
+              onChange={(e) => setProgramNotes(e)}
+              placeholder="Note what the trainee will be doing in this program, any specific goals, or other relevant information."
             />
           </div>
           <DialogFooter className="mt-4">
@@ -793,6 +803,13 @@ export default function SelectedTrainee() {
     });
   };
 
+  const handleDescriptionChange = useCallback((value: string) => {
+    setProgressForm((prev) => ({
+      ...prev,
+      description: value,
+    }));
+  }, []);
+
   return (
     <ProtectedRoute>
       <div className="flex flex-col min-h-screen w-full">
@@ -995,19 +1012,10 @@ export default function SelectedTrainee() {
                           <Label htmlFor="description">Description</Label>
                         </div>
                         <div className="flex flex-1">
-                          <Textarea
-                            id="description"
-                            name="description"
-                            placeholder="Enter progress log description"
+                          <RichTextEditor
                             value={progressForm.description}
-                            required
-                            onChange={(e) =>
-                              setProgressForm((prev) => ({
-                                ...prev,
-                                description: e.target.value,
-                              }))
-                            }
-                            className="flex-1"
+                            onChange={handleDescriptionChange}
+                            placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
                           />
                         </div>
                       </div>

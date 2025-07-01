@@ -191,9 +191,10 @@ function ProgressLogCard({
         </div>
       </CardHeader>
       <CardContent className="px-3 sm:px-6">
-        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-          {event.data.description}
-        </p>
+        <div
+          className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap break-words"
+          dangerouslySetInnerHTML={{ __html: event.data.description }}
+        />
       </CardContent>
     </Card>
   );
@@ -267,9 +268,10 @@ function ProgramAssignmentCard({
         </div>
       </CardHeader>
       <CardContent className="px-3 sm:px-6 space-y-3">
-        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-          {event.data.notes}
-        </p>
+        <div
+          className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap break-words"
+          dangerouslySetInnerHTML={{ __html: event.data.notes }}
+        />
 
         {isCompleted && (
           <div className="flex items-center space-x-2 text-xs sm:text-sm p-2 sm:p-3 bg-green-50 rounded-lg">
