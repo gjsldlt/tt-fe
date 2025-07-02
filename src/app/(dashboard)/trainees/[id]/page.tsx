@@ -17,6 +17,7 @@ import {
   ChevronRight,
   CircleDotDashed,
   Edit,
+  Expand,
   Mail,
   MoreHorizontal,
   RefreshCw,
@@ -506,41 +507,41 @@ export default function SelectedTrainee() {
 
   const progressDialog = (
     <Dialog open={openProgressDialog} onOpenChange={setOpenProgressDialog}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="flex flex-col !max-w-[70vw] !max-h-2xl !h-[70vh] !w-[70vw]">
+        <DialogHeader className="m-0 top-0">
           <DialogTitle>Add Progress Log</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleProgressLogSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+        <form
+          onSubmit={handleProgressLogSubmit}
+          className="space-y-4 flex flex-1 flex-col justify-stretch  overflow-auto"
+        >
+          <div className="grid grid-cols-1 gap-2">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
               name="title"
               placeholder="Enter progress log details"
               required
+              value={progressForm.title}
               onChange={(e) =>
                 setProgressForm((prev) => ({ ...prev, title: e.target.value }))
               }
             />
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="flex-1 flex flex-col items-stretch gap-4">
             <Label htmlFor="title">Description</Label>
-            {/* <Textarea
-              id="title"
-              name="title"
-              placeholder="Enter progress log details"
-              required
-            /> */}
-            <RichTextEditor
-              value={progressForm.description}
-              onChange={(e) =>
-                setProgressForm((prev) => ({
-                  ...prev,
-                  description: e,
-                }))
-              }
-              placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
-            />
+            <div className="flex-1">
+              <RichTextEditor
+                value={progressForm.description}
+                onChange={(e) =>
+                  setProgressForm((prev) => ({
+                    ...prev,
+                    description: e,
+                  }))
+                }
+                placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
+              />
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -557,12 +558,15 @@ export default function SelectedTrainee() {
 
   const programDialog = (
     <Dialog open={openProgramDialog} onOpenChange={setOpenProgramDialog}>
-      <DialogContent>
+      <DialogContent className="flex flex-col items-stretch justify-stretch !max-w-[50vw] !max-h-2xl !h-[50vh] !w-[50vw]">
         <DialogHeader>
           <DialogTitle>Assign Program</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmitAssignProgram} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+        <form
+          onSubmit={handleSubmitAssignProgram}
+          className="space-y-4 flex-1 flex flex-col w-full overflow-auto"
+        >
+          <div className="flex flex-1 flex-col  gap-4">
             <Label htmlFor="program">Select Program</Label>
             <select
               id="program"
@@ -575,8 +579,6 @@ export default function SelectedTrainee() {
                   (p) => p.id.toString() === e.target.value
                 );
                 setTempProgram(selectedProgram || null);
-                // You may want to set a state for selected program here
-                // setSelectedProgram(selectedProgram);
               }}
             >
               <option value="" disabled>
@@ -589,20 +591,15 @@ export default function SelectedTrainee() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="flex-1 flex flex-col items-stretch gap-4">
             <Label htmlFor="notes">Notes</Label>
-            {/* <Textarea
-              id="notes"
-              name="notes"
-              placeholder="Add any notes here"
-              value={programNotes || ""}
-              onChange={(e) => setProgramNotes(e.target.value)}
-            /> */}
-            <RichTextEditor
-              value={programNotes || ""}
-              onChange={(e) => setProgramNotes(e)}
-              placeholder="Note what the trainee will be doing in this program, any specific goals, or other relevant information."
-            />
+            <div className="flex-1">
+              <RichTextEditor
+                value={programNotes || ""}
+                onChange={(e) => setProgramNotes(e)}
+                placeholder="Note what the trainee will be doing in this program, any specific goals, or other relevant information."
+              />
+            </div>
           </div>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
@@ -784,6 +781,10 @@ export default function SelectedTrainee() {
         </DialogFooter>
       ),
     });
+  };
+
+  const progressFormReset = () => {
+    setProgressForm(PROGRESS_FORM_DEFAULT);
   };
 
   const customDialog = (
@@ -1053,14 +1054,14 @@ export default function SelectedTrainee() {
             </CardContent>
           </Card>
           {/* Quick Progress Log Form Card */}
-          <Card className="flex-1 flex">
-            <CardContent className="flex-1 flex flex-col justify-stretch">
+          <Card className="flex-1 flex gap-y-2 overflow-hidden">
+            <CardContent className="flex-1 flex flex-col justify-stretch max-h-[42vh] max-w-[50vw] overflow-auto">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleProgressLogSubmit(e);
                 }}
-                className="space-y-4 flex flex-col h-full justify-stretch"
+                className="space-y-4 flex flex-col h-full justify-stretch "
               >
                 <div className="grid grid-cols-1 gap-4">
                   <Label htmlFor="title">Quick Progress Log</Label>
@@ -1069,7 +1070,7 @@ export default function SelectedTrainee() {
                     name="title"
                     placeholder="Enter progress log title"
                     required
-                    value={progressForm.title}
+                    value={!openProgressDialog ? progressForm.title : ""}
                     onChange={(e) =>
                       setProgressForm((prev) => ({
                         ...prev,
@@ -1084,7 +1085,9 @@ export default function SelectedTrainee() {
                   </div>
                   <div className="flex-1">
                     <RichTextEditor
-                      value={progressForm.description}
+                      value={
+                        !openProgressDialog ? progressForm.description : ""
+                      }
                       onChange={handleDescriptionChange}
                       placeholder="Describe the trainee's progress, achievements, areas for improvement, and any observations..."
                     />
@@ -1092,6 +1095,15 @@ export default function SelectedTrainee() {
                 </div>
                 {/* form clear and submit */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-end">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setOpenProgressDialog(true)}
+                    className="ml-auto"
+                    type="button"
+                  >
+                    <Expand className="h-4 w-4" />
+                  </Button>
                   {activeProgram && (
                     <div className="flex items-center space-x-2">
                       <Switch
@@ -1116,6 +1128,8 @@ export default function SelectedTrainee() {
                     disabled={creating}
                     className="w-full sm:w-auto"
                     variant="outline"
+                    type="reset"
+                    onClick={progressFormReset}
                   >
                     Clear
                   </Button>
@@ -1183,35 +1197,29 @@ export default function SelectedTrainee() {
   );
 
   const timelineColumn = (
-    <Card className="flex-1 flex flex-col min-h-0">
-      {" "}
-      {/* min-h-0 is important for flex children */}
-      <CardContent className="flex-1 flex flex-col min-h-0 p-0">
-        {" "}
-        {/* Remove extra padding */}
-        {trainee && (
-          <TimelineView
-            trainee={trainee}
-            dataLogs={progressLogs}
-            dataAssignments={allTraineePrograms}
-            traineeAuditLogs={allTraineeAuditLogs}
-            deleteProgressLog={handleDeleteProgressLog}
-            deleteProgramAssignment={handleDeleteProgramAssignment}
-          />
-        )}
-      </CardContent>
+    <Card className="flex-1 flex flex-col min-h-0 gap-0 py-0">
+      {trainee && (
+        <TimelineView
+          trainee={trainee}
+          dataLogs={progressLogs}
+          dataAssignments={allTraineePrograms}
+          traineeAuditLogs={allTraineeAuditLogs}
+          deleteProgressLog={handleDeleteProgressLog}
+          deleteProgramAssignment={handleDeleteProgramAssignment}
+        />
+      )}
     </Card>
   );
 
   return (
     <ProtectedRoute>
-      <div className="flex-1 min-h-full w-full sm:p-4 bg-muted/10 flex justify-stretch flex-col xl:flex-row gap-4">
+      <div className="flex-1 min-h-full w-full p-4 md:p-0 bg-muted/10 flex justify-stretch flex-col xl:flex-row gap-4">
         {/* Profile Column */}
-        <div className="flex-1 flex flex-col items-stretch gap-4 ">
+        <div className="flex-1 flex flex-col items-stretch gap-4 max-w-full overflow-auto">
           {profileColumn}
         </div>
         {/* Timeline  */}
-        <div className="flex-1 flex flex-col ">{timelineColumn}</div>
+        <div className="flex-1 flex flex-col">{timelineColumn}</div>
       </div>
       {traineeDialog}
       {progressDialog}

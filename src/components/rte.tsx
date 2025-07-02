@@ -87,7 +87,7 @@ export default function RichTextEditor({
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        className="min-h-[120px] p-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 prose prose-sm max-w-none"
+        className="h-full p-3 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 prose prose-sm max-w-full overflow-auto"
         style={{ outline: "none" }}
         data-placeholder={placeholder}
         suppressContentEditableWarning={true}

@@ -11,6 +11,7 @@ export type Trainee = {
   addedBy: string; // memberId
   created_at: string; // ISO date string
   program?: string;
+  member?: Member;
 };
 
 export type ProgressLog = {

@@ -52,7 +52,7 @@ export interface FilterConfig {
 }
 
 export interface ColumnDef<T> {
-  accessorKey: keyof T;
+  accessorKey: keyof T | string;
   header: string;
   cell?: (value: unknown, row: T) => React.ReactNode;
   sortable?: boolean;
