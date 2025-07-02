@@ -101,6 +101,9 @@ const formatFieldValue = (value: any, fieldName: string): string => {
   if (fieldName === "active") {
     return value ? "Active" : "Inactive";
   }
+  if (fieldName === "created_at" || fieldName === "updated_at") {
+    return new Date(value).toLocaleDateString();
+  }
   if (value === "" || value === null || value === undefined) {
     return "(empty)";
   }
@@ -807,8 +810,9 @@ export function TimelineView({
               data={timelineEvents}
               columns={timelineColumns}
               pageSize={10}
-              className="w-full"
+              className="w-full flex-1"
               emptyMessage="No timeline events."
+              maxHeight="50vh"
             />
           </div>
         </TabsContent>

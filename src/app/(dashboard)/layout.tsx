@@ -42,9 +42,7 @@ export default function DashboardLayout({
               <Sidebar />
               <div className="flex flex-1 flex-col h-screen">
                 <TopbarContainer />
-                <main className="flex-1 sm:overflow-auto sm:p-4">
-                  {children}
-                </main>
+                <main className="flex-1 overflow-auto sm:p-4">{children}</main>
                 <Toaster />
               </div>
             </div>

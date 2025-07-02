@@ -72,6 +72,7 @@ export interface DataTableProps<T> {
   searchable?: boolean;
   searchPlaceholder?: string;
   className?: string;
+  maxHeight?: string; // <-- Add this line
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -96,6 +97,7 @@ export function DataTable<T extends Record<string, unknown>>({
   searchable = true,
   searchPlaceholder = "Search...",
   className,
+  maxHeight, // <-- Add this line
 }: DataTableProps<T>) {
   const [sortState, setSortState] = React.useState<SortState>({
     column: null,
@@ -544,7 +546,10 @@ export function DataTable<T extends Record<string, unknown>>({
       )}
 
       {/* Table */}
-      <div className="rounded-md border overflow-x-auto">
+      <div
+        className="rounded-md border overflow-x-auto"
+        style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
+      >
         <Table className="min-w-full">
           <TableHeader>
             <TableRow>

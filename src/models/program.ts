@@ -4,4 +4,5 @@ export type Program = {
   description: string;
   tags: string[];
   created_by: string; // memberId
+  created_at?: string; // ISO date string
 };

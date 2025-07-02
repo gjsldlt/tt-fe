@@ -41,12 +41,14 @@ export async function createProgressLog({
   title,
   description,
   programAssignmentId,
+  created_at = new Date().toISOString(),
 }: {
   created_by: string;
   traineeId: string;
   title: string;
   description: string;
   programAssignmentId: string | undefined;
+  created_at?: string; // Optional, defaults to current date
 }) {
   const { data, error } = await supabase
     .from("progresslog")
@@ -57,6 +59,7 @@ export async function createProgressLog({
         title,
         description,
         programAssignmentId,
+        created_at,
       },
     ])
     .select()

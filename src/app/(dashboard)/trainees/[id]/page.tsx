@@ -60,6 +60,13 @@ import { DialogProps } from "@/models/etc";
 import { getAuditLogsForTrainee } from "@/lib/services/trainee-audit-log";
 import RichTextEditor from "@/components/rte";
 import { useTopbar } from "@/app/context/topbar-context";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SelectedTrainee() {
   const { member } = useMember();
@@ -78,13 +85,13 @@ export default function SelectedTrainee() {
     TraineeAuditLog[]
   >([]);
   const { setTopbar } = useTopbar();
+  const [confirmDate, setConfirmDate] = useState<Date | null>(null);
 
   const [programNotes, setProgramNotes] = useState<string>("");
   // Loading state
   const [loading, setLoading] = useState<boolean>(true);
   const [programLoader, setProgramLoader] = useState<boolean>(false);
   // Create Dialog state
-  const [creating, setCreating] = useState(false);
   const [openUpdateDialog, setOpenUpdateDialog] = useState(false);
 
   // Dialog states
@@ -118,6 +125,7 @@ export default function SelectedTrainee() {
     title: "",
     description: "",
     programId: activeProgramAssignment ? activeProgramAssignment.id : undefined,
+    createdDate: new Date(),
   };
   const [form, setForm] = useState({
     firstname: "",
@@ -130,6 +138,7 @@ export default function SelectedTrainee() {
     title: string;
     description: string;
     programId: string | undefined;
+    createdDate: Date | null;
   }>(PROGRESS_FORM_DEFAULT);
 
   // Function to fetch trainee data by ID
@@ -148,11 +157,10 @@ export default function SelectedTrainee() {
       setActiveProgramAssignment(resActiveProgram);
       if (resActiveProgram) {
         setActiveProgram(resActiveProgram.program || null);
-        setProgressForm({
-          title: "",
-          description: "",
-          programId: resActiveProgram ? resActiveProgram.id : undefined,
-        });
+        setProgressForm((prev) => ({
+          ...prev,
+          programId: resActiveProgram.id,
+        }));
       }
       const resTraineePrograms = await getProgramAssignmentsForTrainee(id);
       setAllTraineePrograms(resTraineePrograms);
@@ -328,7 +336,7 @@ export default function SelectedTrainee() {
 
   const handleProgressLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCreating(true);
+    setLoading(true);
     try {
       // You can call a service function to create the progress log
       await createProgressLog({
@@ -337,6 +345,8 @@ export default function SelectedTrainee() {
         title: progressForm.title,
         description: progressForm.description,
         programAssignmentId: progressForm.programId,
+        created_at:
+          progressForm.createdDate?.toISOString() || new Date().toISOString(),
       });
 
       await getTrainee(params.id);
@@ -348,15 +358,9 @@ export default function SelectedTrainee() {
     } catch (error) {
       console.error("Error submitting progress log:", error);
     } finally {
-      setCreating(false);
+      setLoading(false);
       setOpenProgressDialog(false);
-      setProgressForm({
-        title: "",
-        description: "",
-        programId: activeProgramAssignment
-          ? activeProgramAssignment.id
-          : undefined,
-      });
+      setProgressForm(PROGRESS_FORM_DEFAULT);
     }
   };
 
@@ -393,6 +397,7 @@ export default function SelectedTrainee() {
         assigned_by: member?.id || "",
         trainee_id: trainee?.id || "",
         program_id: tempProgram.id,
+        created_at: confirmDate?.toISOString() || new Date().toISOString(), // Use current date as created_at
       });
       toast("Program assigned successfully", {
         description: `Program ${tempProgram.name} has been assigned to ${trainee?.firstname} ${trainee?.lastname}.`,
@@ -477,18 +482,41 @@ export default function SelectedTrainee() {
               />
             </div>
           </div>
-          <div>
-            <Label className="mb-3" htmlFor="active">
-              Active
-            </Label>
-            <Switch
-              onCheckedChange={(checked: boolean) =>
-                setForm((prev) => ({ ...prev, active: checked }))
-              }
-              id="active"
-              name="active"
-              checked={form.active}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-3" htmlFor="created_at">
+                Date Joined
+              </Label>
+              <Input
+                id="created_at"
+                type="date"
+                name="created_at"
+                value={
+                  trainee?.created_at
+                    ? new Date(trainee.created_at).toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0]
+                }
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    created_at: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Label className="mb-3" htmlFor="active">
+                Active
+              </Label>
+              <Switch
+                onCheckedChange={(checked: boolean) =>
+                  setForm((prev) => ({ ...prev, active: checked }))
+                }
+                id="active"
+                name="active"
+                checked={form.active}
+              />
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -496,8 +524,8 @@ export default function SelectedTrainee() {
                 Close
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={creating}>
-              Update
+            <Button type="submit" disabled={loading}>
+              {loading ? "Updating..." : "Update Trainee"}
             </Button>
           </DialogFooter>
         </form>
@@ -515,18 +543,46 @@ export default function SelectedTrainee() {
           onSubmit={handleProgressLogSubmit}
           className="space-y-4 flex flex-1 flex-col justify-stretch  overflow-auto"
         >
-          <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              name="title"
-              placeholder="Enter progress log details"
-              required
-              value={progressForm.title}
-              onChange={(e) =>
-                setProgressForm((prev) => ({ ...prev, title: e.target.value }))
-              }
-            />
+          <div className="flex w-full items-center justify-stretch space-x-4">
+            <div className="flex-1 grid grid-cols-1 gap-4">
+              <Label htmlFor="title">Quick Progress Log</Label>
+              <Input
+                id="title"
+                name="title"
+                className="w-full"
+                placeholder="Enter progress log title"
+                required
+                value={!openProgressDialog ? progressForm.title : ""}
+                onChange={(e) =>
+                  setProgressForm((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex-1 grid grid-cols-1 gap-4">
+              <Label htmlFor="date-created">Date Created</Label>
+              <Input
+                id="date-created"
+                type="date"
+                name="date-created"
+                value={
+                  !openProgressDialog
+                    ? progressForm.createdDate?.toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0]
+                }
+                onChange={(e) =>
+                  setProgressForm((prev) => ({
+                    ...prev,
+                    createdDate: e.target.value
+                      ? new Date(e.target.value)
+                      : null,
+                  }))
+                }
+                className="w-full"
+              />
+            </div>
           </div>
           <div className="flex-1 flex flex-col items-stretch gap-4">
             <Label htmlFor="title">Description</Label>
@@ -566,30 +622,51 @@ export default function SelectedTrainee() {
           onSubmit={handleSubmitAssignProgram}
           className="space-y-4 flex-1 flex flex-col w-full overflow-auto"
         >
-          <div className="flex flex-1 flex-col  gap-4">
-            <Label htmlFor="program">Select Program</Label>
-            <select
-              id="program"
-              name="program"
-              className="border rounded px-3 py-2"
-              required
-              value={tempProgram?.id || ""}
-              onChange={(e) => {
-                const selectedProgram = allPrograms.find(
-                  (p) => p.id.toString() === e.target.value
-                );
-                setTempProgram(selectedProgram || null);
-              }}
-            >
-              <option value="" disabled>
-                Select a program to assign
-              </option>
-              {allPrograms.map((program) => (
-                <option key={program.id} value={program.id}>
-                  {program.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-row w-full items-center justify-stretch space-x-4">
+            <div className="flex flex-col  gap-4">
+              <Label htmlFor="program">Select Program</Label>
+              <Select
+                value={tempProgram?.id ? String(tempProgram.id) : ""}
+                onValueChange={(value) => {
+                  const selectedProgram = allPrograms.find(
+                    (p) => String(p.id) === value
+                  );
+                  setTempProgram(selectedProgram || null);
+                }}
+                required
+              >
+                <SelectTrigger
+                  id="program"
+                  className="border rounded px-3 py-2"
+                >
+                  <SelectValue placeholder="Select a program to assign" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allPrograms.map((program) => (
+                    <SelectItem key={program.id} value={String(program.id)}>
+                      {program.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-4">
+              <Label htmlFor="created_at">Date</Label>
+              <Input
+                id="created_at"
+                type="date"
+                value={
+                  confirmDate
+                    ? confirmDate.toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0]
+                }
+                onChange={(e) =>
+                  setConfirmDate(
+                    e.target.value ? new Date(e.target.value) : new Date()
+                  )
+                }
+              />
+            </div>
           </div>
           <div className="flex-1 flex flex-col items-stretch gap-4">
             <Label htmlFor="notes">Notes</Label>
@@ -632,6 +709,26 @@ export default function SelectedTrainee() {
             </b>
             ?
           </p>
+          <div>
+            <Label htmlFor="finish-date" className="mb-2">
+              Finish Date
+            </Label>
+            <Input
+              id="finish-date"
+              type="date"
+              value={
+                confirmDate
+                  ? confirmDate.toISOString().split("T")[0]
+                  : new Date().toISOString().split("T")[0]
+              }
+              onChange={(e) =>
+                setConfirmDate(
+                  e.target.value ? new Date(e.target.value) : new Date()
+                )
+              }
+              className="w-full"
+            />
+          </div>
           <DialogFooter className="mt-4">
             <Button
               variant="outline"
@@ -646,7 +743,10 @@ export default function SelectedTrainee() {
                 setProgramLoader(true);
                 try {
                   if (activeProgramAssignment) {
-                    // Call the service to finish the program
+                    activeProgramAssignment.done_at = confirmDate
+                      ? confirmDate.toISOString()
+                      : new Date().toISOString();
+                    // Call the service to finish the program with the selected date
                     await markProgramAssignmentDone(
                       trainee?.id || "",
                       activeProgramAssignment
@@ -1054,30 +1154,57 @@ export default function SelectedTrainee() {
             </CardContent>
           </Card>
           {/* Quick Progress Log Form Card */}
-          <Card className="flex-1 flex gap-y-2 overflow-hidden">
-            <CardContent className="flex-1 flex flex-col justify-stretch max-h-[42vh] max-w-[50vw] overflow-auto">
+          <Card className="flex-1 flex gap-y-2 overflow-hidden items-stretch">
+            <CardContent className="flex-1 flex flex-col justify-stretch h-full max-h-[42vh] w-full overflow-auto">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleProgressLogSubmit(e);
                 }}
-                className="space-y-4 flex flex-col h-full justify-stretch "
+                className="space-y-4 flex-1 flex flex-col h-ful w-full justify-stretch "
               >
-                <div className="grid grid-cols-1 gap-4">
-                  <Label htmlFor="title">Quick Progress Log</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    placeholder="Enter progress log title"
-                    required
-                    value={!openProgressDialog ? progressForm.title : ""}
-                    onChange={(e) =>
-                      setProgressForm((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                  />
+                <div className="flex w-full items-center justify-stretch space-x-4">
+                  <div className="flex-1 grid grid-cols-1 gap-4">
+                    <Label htmlFor="title">Quick Progress Log</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      className="w-full"
+                      placeholder="Enter progress log title"
+                      required
+                      value={!openProgressDialog ? progressForm.title : ""}
+                      onChange={(e) =>
+                        setProgressForm((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex-1 grid grid-cols-1 gap-4">
+                    <Label htmlFor="date-created">Date Created</Label>
+                    <Input
+                      id="date-created"
+                      type="date"
+                      name="date-created"
+                      value={
+                        !openProgressDialog
+                          ? progressForm.createdDate
+                              ?.toISOString()
+                              .split("T")[0]
+                          : new Date().toISOString().split("T")[0]
+                      }
+                      onChange={(e) =>
+                        setProgressForm((prev) => ({
+                          ...prev,
+                          createdDate: e.target.value
+                            ? new Date(e.target.value)
+                            : null,
+                        }))
+                      }
+                      className="w-full"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-1 flex-col gap-4 justify-stretch">
                   <div>
@@ -1125,7 +1252,7 @@ export default function SelectedTrainee() {
                   )}
                   <div className="flex-1" />
                   <Button
-                    disabled={creating}
+                    disabled={loading}
                     className="w-full sm:w-auto"
                     variant="outline"
                     type="reset"
@@ -1135,10 +1262,10 @@ export default function SelectedTrainee() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={creating}
+                    disabled={loading}
                     className="w-full sm:w-auto"
                   >
-                    {creating ? "Creating..." : "Add Progress Log"}
+                    {loading ? "Creating..." : "Add Progress Log"}
                   </Button>
                 </div>
               </form>
@@ -1161,43 +1288,11 @@ export default function SelectedTrainee() {
           </CardContent>
         </Card>
       )}
-      {/* Stats Card */}
-      {/* <Card>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-600">
-                {daysJoined}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Days since joining
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600">
-                {progressLogs.length}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Progress logs recorded
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-600">
-                {allTraineePrograms.filter((a) => a.done_at !== null).length}/
-                {allTraineePrograms.length}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Programs completed
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card> */}
     </>
   );
 
   const timelineColumn = (
-    <Card className="flex-1 flex flex-col min-h-0 gap-0 py-0">
+    <Card className="flex-1 flex flex-col min-h-0 gap-0 py-0 max-w-full overflow-auto">
       {trainee && (
         <TimelineView
           trainee={trainee}

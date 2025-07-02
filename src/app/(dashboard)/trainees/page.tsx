@@ -439,7 +439,7 @@ export default function ProgramsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-col min-h-screen w-full">
+      <div className="flex flex-col h-full w-full">
         <div className="flex-1 p-4 bg-muted/10">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -473,6 +473,7 @@ export default function ProgramsPage() {
               pageSize={10}
               pageSizeOptions={[5, 10, 20]}
               searchable={true}
+              maxHeight="75vh"
               searchPlaceholder="Search users by name, email, or department..."
             />
           )}

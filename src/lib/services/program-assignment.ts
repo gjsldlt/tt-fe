@@ -9,11 +9,13 @@ export async function assignProgramToTrainee({
   assigned_by,
   trainee_id,
   program_id,
+  created_at = new Date().toISOString(),
 }: {
   notes?: string;
   assigned_by: string;
   trainee_id: string;
   program_id: string;
+  created_at?: string; // Optional, defaults to current date
 }) {
   const { data, error } = await supabase
     .from("programassignment")
@@ -23,6 +25,7 @@ export async function assignProgramToTrainee({
         assigned_by,
         trainee_id,
         program_id,
+        created_at,
       },
     ])
     .select()
@@ -67,7 +70,6 @@ export async function markProgramAssignmentDone(
       } as Record<string, string>,
       body: JSON.stringify({
         ...activeProgram,
-        done_at: new Date().toISOString(),
       }),
     }
   );
