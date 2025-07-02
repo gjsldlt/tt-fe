@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRef } from "react";
 import {
   Table,
   TableBody,
@@ -47,8 +48,10 @@ export interface FilterConfig {
   type: "text" | "select" | "date" | "number" | "boolean";
   options?: { label: string; value: string }[];
   placeholder?: string;
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getValue?: (row: any) => any; // New optional getValue function
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getValue?: (row: any) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filterFunction?: (row: any, filterValue: any) => boolean; // <-- Add this line
 }
 
 export interface ColumnDef<T> {
@@ -136,24 +139,59 @@ export function DataTable<T extends Record<string, unknown>>({
         );
         if (!column?.filterConfig) return;
 
-        filtered = filtered.filter((row) => {
-          // Use getValue if provided, else use the raw cell value
-          const cellValue = column.filterConfig?.getValue
-            ? column.filterConfig.getValue(row)
-            : row[column.accessorKey];
+        // Use custom filterFunction if provided
+        if (typeof column.filterConfig.filterFunction === "function") {
+          filtered = filtered.filter((row) =>
+            column.filterConfig!.filterFunction!(row, filterValue)
+          );
+          return;
+        }
 
-          switch (column.filterConfig!.type) {
-            case "text":
-              return String(cellValue || "")
+        // Default filtering logic
+        // const cellValue = column.filterConfig?.getValue
+        //   ? column.filterConfig.getValue(row)
+        //   : row[column.accessorKey];
+
+        switch (column.filterConfig!.type) {
+          case "text":
+            filtered = filtered.filter((row) => {
+              const value = column.filterConfig?.getValue
+                ? column.filterConfig.getValue(row)
+                : row[column.accessorKey];
+              return String(value || "")
                 .toLowerCase()
                 .includes(String(filterValue).toLowerCase());
-            case "select":
-              return cellValue === filterValue;
-            case "number":
-              return Number(cellValue) === Number(filterValue);
-            case "boolean":
-              return String(cellValue) === String(filterValue);
-            case "date":
+            });
+            break;
+          case "select":
+            filtered = filtered.filter((row) => {
+              const value = column.filterConfig?.getValue
+                ? column.filterConfig.getValue(row)
+                : row[column.accessorKey];
+              return value === filterValue;
+            });
+            break;
+          case "number":
+            filtered = filtered.filter((row) => {
+              const value = column.filterConfig?.getValue
+                ? column.filterConfig.getValue(row)
+                : row[column.accessorKey];
+              return Number(value) === Number(filterValue);
+            });
+            break;
+          case "boolean":
+            filtered = filtered.filter((row) => {
+              const value = column.filterConfig?.getValue
+                ? column.filterConfig.getValue(row)
+                : row[column.accessorKey];
+              return String(value) === String(filterValue);
+            });
+            break;
+          case "date":
+            filtered = filtered.filter((row) => {
+              const value = column.filterConfig?.getValue
+                ? column.filterConfig.getValue(row)
+                : row[column.accessorKey];
               if (
                 filterValue &&
                 typeof filterValue === "object" &&
@@ -161,7 +199,7 @@ export function DataTable<T extends Record<string, unknown>>({
               ) {
                 const dateFilter = filterValue as { from?: Date; to?: Date };
                 if (dateFilter.from || dateFilter.to) {
-                  const cellDate = new Date(cellValue as string);
+                  const cellDate = new Date(value as string);
                   const fromDate = dateFilter.from
                     ? new Date(dateFilter.from)
                     : null;
@@ -177,10 +215,11 @@ export function DataTable<T extends Record<string, unknown>>({
                 }
               }
               return true;
-            default:
-              return true;
-          }
-        });
+            });
+            break;
+          default:
+            break;
+        }
       }
     });
 
@@ -304,18 +343,28 @@ export function DataTable<T extends Record<string, unknown>>({
   // Column filter component
   const ColumnFilter = ({ column }: { column: ColumnDef<T> }) => {
     const columnKey = String(column.accessorKey);
-    const filterValue = columnFilters[columnKey];
-    const config = column.filterConfig!;
+    const rawFilterValue = columnFilters[columnKey];
+    const filterValue =
+      typeof rawFilterValue === "string" ? rawFilterValue : "";
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-    switch (config.type) {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        handleColumnFilterChange(columnKey, value);
+      }, 300); // 300ms debounce
+    };
+
+    switch (column.filterConfig!.type) {
       case "text":
         return (
           <Input
-            placeholder={config.placeholder || `Filter ${column.header}...`}
-            value={(filterValue as string) || ""}
-            onChange={(e) =>
-              handleColumnFilterChange(columnKey, e.target.value)
+            placeholder={
+              column.filterConfig?.placeholder || `Filter ${column.header}...`
             }
+            defaultValue={filterValue}
+            onChange={handleChange}
             className="h-8 w-[150px]"
           />
         );
@@ -333,7 +382,7 @@ export function DataTable<T extends Record<string, unknown>>({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              {config.options?.map((option) => (
+              {column.filterConfig?.options?.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -390,7 +439,7 @@ export function DataTable<T extends Record<string, unknown>>({
           <div className="flex items-center space-x-2">
             <Checkbox
               id={columnKey}
-              checked={filterValue === true}
+              checked={!!!filterValue}
               onCheckedChange={(checked) =>
                 handleColumnFilterChange(columnKey, checked ? true : "")
               }
@@ -545,13 +594,13 @@ export function DataTable<T extends Record<string, unknown>>({
         </div>
       )}
 
-      {/* Table */}
+      {/* Responsive Table */}
       <div
         className="rounded-md border overflow-x-auto"
         style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
       >
-        <Table className="min-w-full">
-          <TableHeader>
+        <Table className="min-w-full w-full text-xs sm:text-sm">
+          <TableHeader className="hidden md:table-header-group">
             <TableRow>
               {columns.map((column) => (
                 <TableHead
@@ -580,16 +629,33 @@ export function DataTable<T extends Record<string, unknown>>({
               <EmptyState />
             ) : (
               paginatedData.map((row, index) => (
-                <TableRow key={index}>
+                <TableRow
+                  key={index}
+                  className="block md:table-row border-b md:border-0 mb-4 md:mb-0 bg-background md:bg-transparent"
+                >
                   {columns.map((column) => (
-                    <TableCell key={String(column.accessorKey)}>
+                    <TableCell
+                      key={String(column.accessorKey)}
+                      className="block md:table-cell px-2 py-2 md:px-4 md:py-2 align-top"
+                      style={
+                        column.width
+                          ? { width: column.width, maxWidth: column.width }
+                          : undefined
+                      }
+                    >
+                      <span className="md:hidden font-semibold text-muted-foreground block mb-1">
+                        {column.header}
+                      </span>
                       {column.cell
                         ? column.cell(row[column.accessorKey], row)
                         : String(row[column.accessorKey] ?? "")}
                     </TableCell>
                   ))}
                   {actions && (
-                    <TableCell>
+                    <TableCell className="block md:table-cell px-2 py-2 md:px-4 md:py-2 align-top">
+                      <span className="md:hidden font-semibold text-muted-foreground block mb-1">
+                        Actions
+                      </span>
                       {typeof actions === "function" ? actions(row) : actions}
                     </TableCell>
                   )}
@@ -602,7 +668,7 @@ export function DataTable<T extends Record<string, unknown>>({
 
       {/* Results Summary */}
       {!isLoading && (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-xs sm:text-sm text-muted-foreground">
           {sortedData.length !== data.length && (
             <span>
               Showing {sortedData.length} of {data.length} entries (filtered) •{" "}
@@ -615,9 +681,9 @@ export function DataTable<T extends Record<string, unknown>>({
       {/* Pagination */}
       {!isLoading && sortedData.length > 0 && (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex flex-wrap items-center space-x-2 sm:space-x-6 lg:space-x-8">
             <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">Rows per page</p>
+              <p className="text-xs sm:text-sm font-medium">Rows per page</p>
               <Select
                 value={String(pageSize)}
                 onValueChange={handlePageSizeChange}
@@ -636,12 +702,12 @@ export function DataTable<T extends Record<string, unknown>>({
             </div>
 
             <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">
+              <p className="text-xs sm:text-sm font-medium">
                 Page {currentPage} of {totalPages}
               </p>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 sm:space-x-2">
               <Button
                 variant="outline"
                 className="h-8 w-8 p-0"

@@ -6,3 +6,7 @@ export type Program = {
   created_by: string; // memberId
   created_at?: string; // ISO date string
 };
+
+export interface ProgramsTableRef {
+  openCreateDialog: () => void;
+}

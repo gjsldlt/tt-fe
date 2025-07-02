@@ -22,10 +22,16 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useMember } from "@/app/context/member-context";
 import { toast } from "sonner";
-import { Delete, RefreshCw, View } from "lucide-react";
+import { Delete, MoreVertical, RefreshCw, View } from "lucide-react";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useTopbar } from "@/app/context/topbar-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function ProgramsPage() {
   const { member } = useMember();
@@ -269,6 +275,9 @@ export default function ProgramsPage() {
         `${selectedTrainee.firstname} ${selectedTrainee.lastname} has been deleted`
       );
     } catch (error) {
+      toast.error(
+        `Error deleting trainee: ${selectedTrainee.firstname} ${selectedTrainee.lastname}`
+      );
       console.error("Error deleting trainee:", error);
     } finally {
       setOpenDeleteConfirm(false);
@@ -413,33 +422,66 @@ export default function ProgramsPage() {
 
   const actions = (row: Trainee) => (
     <div className="flex items-center space-x-2">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          setSelectedTrainee(row);
-          setOpenDeleteConfirm(true);
-        }}
-      >
-        <Delete className="h-4 w-4 mr-1" />
-        Delete
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          redirect(`/trainees/${row.id}`);
-        }}
-      >
-        <View className="h-4 w-4 mr-1" />
-        View
-      </Button>
+      {/* Mobile: show separate buttons */}
+      <div className="flex md:hidden space-x-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setSelectedTrainee(row);
+            setOpenDeleteConfirm(true);
+          }}
+        >
+          <Delete className="h-4 w-4 mr-1" />
+          Delete
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            redirect(`/trainees/${row.id}`);
+          }}
+        >
+          <View className="h-4 w-4 mr-1" />
+          View
+        </Button>
+      </div>
+      {/* Desktop: show dropdown menu */}
+      <div className="hidden md:flex">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline">
+              <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">Actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => {
+                redirect(`/trainees/${row.id}`);
+              }}
+            >
+              <View className="h-4 w-4 mr-2" />
+              View
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedTrainee(row);
+                setOpenDeleteConfirm(true);
+              }}
+            >
+              <Delete className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-col h-full w-full">
+      <div className="flex flex-col max-w-full h-full w-full overflow-auto">
         <div className="flex-1 p-4 bg-muted/10">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
