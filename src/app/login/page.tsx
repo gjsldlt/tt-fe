@@ -28,11 +28,30 @@ export default function LoginPage() {
   const resetInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (provider: "google" | "github") => {
-    // ...existing code...
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("OAuth error:", error.message);
+    }
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    // ...existing code...
+    e.preventDefault();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      redirect("/dashboard");
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {

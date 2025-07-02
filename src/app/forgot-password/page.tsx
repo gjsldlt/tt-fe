@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 export default function ForgotPasswordPage() {
   const supabase = createClient();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  //   const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
