@@ -14,38 +14,38 @@ import { createClient } from "@/lib/supabase";
 import { Separator } from "@/components/ui/separator";
 import { Chrome } from "lucide-react";
 import { redirect } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function LoginPage() {
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const resetInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (provider: "google" | "github") => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      console.error("OAuth error:", error.message);
-    }
+    // ...existing code...
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // ...existing code...
+  };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError("");
+    setResetSent(false);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/forgot-password`,
+    });
     if (error) {
-      setError(error.message);
+      setResetError(error.message);
     } else {
-      redirect("/dashboard");
+      setResetSent(true);
     }
   };
 
@@ -59,37 +59,78 @@ export default function LoginPage() {
           <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Separator></Separator>
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div>
-              <Label className="mb-2" htmlFor="email">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label className="mb-2" htmlFor="password">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button type="submit" className="w-full">
-              Login
-            </Button>
-          </form>
+          <Separator />
+          {!showForgot ? (
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div>
+                <Label className="mb-2" htmlFor="email">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label className="mb-2" htmlFor="password">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <div className="flex justify-center items-center gap-y-6">
+                <Button type="submit" className="w-full">
+                  Login
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <Label className="mb-2" htmlFor="reset-email">
+                  Enter your email to reset password
+                </Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  ref={resetInputRef}
+                />
+              </div>
+              {resetError && (
+                <p className="text-sm text-red-600">{resetError}</p>
+              )}
+              {resetSent && (
+                <p className="text-sm text-green-600">
+                  Password reset email sent! Please check your inbox.
+                </p>
+              )}
+              <div className="flex justify-between items-center">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="p-0 text-xs"
+                  onClick={() => setShowForgot(false)}
+                >
+                  Back to login
+                </Button>
+                <Button type="submit" className="w-32">
+                  Send Reset Email
+                </Button>
+              </div>
+            </form>
+          )}
           <div className="flex items-center gap-4">
             <Separator className="flex-1" />
             <span className="text-muted-foreground">or</span>
@@ -105,28 +146,25 @@ export default function LoginPage() {
             <Chrome className="mr-2 h-4 w-4" />
             Continue with Google
           </Button>
-
           <div className="text-center text-sm">
-            Don’t have an account?
+            Don&amp;t have an account?
             <Button
               variant="link"
               onClick={() => redirect("/register?method=email")}
             >
               Create one
             </Button>
+            <Button
+              type="button"
+              variant={"link"}
+              onClick={() => {
+                setShowForgot(true);
+                setTimeout(() => resetInputRef.current?.focus(), 100);
+              }}
+            >
+              Forgot password?
+            </Button>
           </div>
-
-          {/* GitHub Sign In */}
-          {/* <Button
-            onClick={() => handleLogin("github")}
-            variant="outline"
-            className="w-full"
-            size="lg"
-          >
-            <Github className="mr-2 h-4 w-4" />
-            Continue with GitHub
-          </Button> */}
-
           <div className="text-center text-sm text-muted-foreground">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </div>
