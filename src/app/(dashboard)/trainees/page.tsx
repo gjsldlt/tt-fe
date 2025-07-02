@@ -225,7 +225,7 @@ export default function ProgramsPage() {
     return () => {
       setTopbar(null); // Clear the topbar when component unmounts
     };
-  }, [setTopbar, fetchTrainees]);
+  }, [setTopbar]);
 
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
