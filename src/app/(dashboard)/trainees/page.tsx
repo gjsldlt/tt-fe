@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export default function ProgramsPage() {
+export default function TraineesPage() {
   const { member } = useMember();
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
