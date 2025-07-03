@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,15 +18,37 @@ import { Separator } from "@/components/ui/separator";
 export default function ForgotPasswordPage() {
   const supabase = createClient();
   const router = useRouter();
-  //   const searchParams = useSearchParams();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Optionally, you can check for an access token in the URL
-  // const accessToken = searchParams.get("access_token");
+  // 1. Parse tokens from URL hash and set session if needed
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      if (access_token && refresh_token) {
+        supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+      }
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    const errorCode = searchParams.get("error_code");
+    if (errorCode === "otp_expired") {
+      setError(
+        "This password reset link is invalid or has expired. Please request a new one."
+      );
+    }
+  }, [searchParams]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +124,14 @@ export default function ForgotPasswordPage() {
             )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Resetting..." : "Reset Password"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push("/login")}
+            >
+              Back to Login
             </Button>
           </form>
         </CardContent>

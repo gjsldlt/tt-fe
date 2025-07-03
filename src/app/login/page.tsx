@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase";
 import { Separator } from "@/components/ui/separator";
-import { Chrome } from "lucide-react";
+import { Github, Chrome } from "lucide-react"; // Add Github icon
 import { redirect } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const [resetError, setResetError] = useState("");
+  const [resetLoading, setResetLoading] = useState(false); // Add this line
   const resetInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (provider: "google" | "github") => {
@@ -58,9 +59,9 @@ export default function LoginPage() {
     e.preventDefault();
     setResetError("");
     setResetSent(false);
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/forgot-password`,
-    });
+    setResetLoading(true); // Start loading
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail);
+    setResetLoading(false); // End loading
     if (error) {
       setResetError(error.message);
     } else {
@@ -73,7 +74,7 @@ export default function LoginPage() {
       <Card className="w-full h-full max-h-md max-w-md mx-auto">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            Welcome to Tao Tracker!
+            Welcome to Trainee Tracker!
           </CardTitle>
           <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
@@ -125,6 +126,7 @@ export default function LoginPage() {
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
                   ref={resetInputRef}
+                  disabled={resetLoading} // Disable input while loading
                 />
               </div>
               {resetError && (
@@ -141,11 +143,12 @@ export default function LoginPage() {
                   variant="link"
                   className="p-0 text-xs"
                   onClick={() => setShowForgot(false)}
+                  disabled={resetLoading} // Disable while loading
                 >
                   Back to login
                 </Button>
-                <Button type="submit" className="w-32">
-                  Send Reset Email
+                <Button type="submit" className="w-32" disabled={resetLoading}>
+                  {resetLoading ? "Sending..." : "Send Reset Email"}
                 </Button>
               </div>
             </form>
@@ -164,6 +167,16 @@ export default function LoginPage() {
           >
             <Chrome className="mr-2 h-4 w-4" />
             Continue with Google
+          </Button>
+          {/* GitHub Sign In */}
+          <Button
+            onClick={() => handleLogin("github")}
+            variant="outline"
+            className="w-full"
+            size="lg"
+          >
+            <Github className="mr-2 h-4 w-4" />
+            Continue with GitHub
           </Button>
           <div className="text-center text-sm">
             Don&amp;t have an account?
