@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Trash,
   User,
+  UserCog,
   Users,
 } from "lucide-react";
 import { redirect, useParams } from "next/navigation";
@@ -69,7 +70,7 @@ import {
 } from "@/components/ui/select";
 
 export default function SelectedTrainee() {
-  const { member } = useMember();
+  const { member, members, refreshMembers } = useMember();
   const params = useParams<{ id: string }>();
   const [trainee, setTrainee] = useState<Trainee | null>(null);
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([]);
@@ -133,6 +134,7 @@ export default function SelectedTrainee() {
     email: "",
     originalTeam: "",
     active: true,
+    buddy: "", // <-- add buddy
   });
   const [progressForm, setProgressForm] = useState<{
     title: string;
@@ -149,6 +151,7 @@ export default function SelectedTrainee() {
   const getTrainee = async (id: string) => {
     setLoading(true);
     try {
+      await refreshMembers();
       const resTrainee = await getTraineeById(id);
       setTrainee(resTrainee as Trainee);
       const resProgressLogs = await getProgressLogsForTrainee(id);
@@ -182,6 +185,7 @@ export default function SelectedTrainee() {
     return () => {
       setTopbar(null); // Clear topbar when component unmounts
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, setTopbar]);
 
   useEffect(() => {
@@ -272,6 +276,7 @@ export default function SelectedTrainee() {
         </Button>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     params.id,
     trainee,
@@ -298,22 +303,37 @@ export default function SelectedTrainee() {
 
   const handleUpdateTraineeProfile = async () => {
     setLoading(true);
+    setOpenUpdateDialog(false);
+    setDialogData(DIALOG_DEFAULTS);
     try {
       if (trainee) {
         await updateTrainee(
           params.id,
-          trainee,
+          {
+            id: trainee?.id,
+            firstname: trainee?.firstname,
+            lastname: trainee?.lastname,
+            email: trainee?.email,
+            originalTeam: trainee?.originalTeam,
+            active: trainee?.active,
+            addedBy: trainee?.addedBy,
+            buddy: trainee?.buddy, // buddy as string or undefined
+          },
           {
             ...form,
             id: trainee?.id || "",
             addedBy: trainee?.addedBy || "",
+            buddy:
+              form.buddy === "none"
+                ? undefined
+                : members.filter((m) => m.id === form.buddy)[0] || undefined, // Convert "none" to null
           },
           member?.id || ""
         );
         await getTrainee(params.id);
       }
     } catch (error) {
-      console.error("Error creating trainee:", error);
+      console.error("Error updating trainee:", error);
     } finally {
       setLoading(false);
       setOpenUpdateDialog(false);
@@ -329,6 +349,7 @@ export default function SelectedTrainee() {
         email: trainee.email,
         originalTeam: trainee.originalTeam,
         active: trainee.active,
+        buddy: trainee.buddy?.id || "none", // <-- add buddy
       });
     }
     setOpenUpdateDialog(true);
@@ -517,6 +538,31 @@ export default function SelectedTrainee() {
                 checked={form.active}
               />
             </div>
+          </div>
+          <div>
+            <Label className="mb-3" htmlFor="buddy">
+              Buddy
+            </Label>
+            <Select
+              name="buddy"
+              value={form.buddy}
+              onValueChange={(value) =>
+                setForm((prev) => ({ ...prev, buddy: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a buddy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No buddy assigned</SelectItem>
+                {members &&
+                  members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.firstname} {m.lastname}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -1041,13 +1087,13 @@ export default function SelectedTrainee() {
                     {trainee?.active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
-                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-2 text-muted-foreground text-sm">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
                     <span className="break-all">{trainee?.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
+                    <UserCog className="h-4 w-4" />
                     <span>{trainee?.originalTeam}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1057,6 +1103,14 @@ export default function SelectedTrainee() {
                       {new Date(
                         trainee?.created_at || new Date()
                       ).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>
+                      {trainee?.buddy
+                        ? `${trainee.buddy.firstname} ${trainee.buddy.lastname}`
+                        : "No Buddy assigned"}
                     </span>
                   </div>
                 </div>

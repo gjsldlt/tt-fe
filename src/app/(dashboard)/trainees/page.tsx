@@ -7,6 +7,7 @@ import { DialogFooter, DialogHeader } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  addBuddyForTrainee,
   createTrainee,
   deleteTrainee,
   getTrainees,
@@ -19,7 +20,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMember } from "@/app/context/member-context";
 import { toast } from "sonner";
 import { Delete, MoreVertical, RefreshCw, View } from "lucide-react";
@@ -32,9 +33,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function TraineesPage() {
-  const { member } = useMember();
+  const { member, members, refreshMembers } = useMember();
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -76,6 +84,35 @@ export default function TraineesPage() {
           </div>
         ),
       },
+      // column for buddy
+      {
+        accessorKey: "buddy",
+        header: "Buddy",
+        sortable: true,
+        filterable: true,
+        filterConfig: {
+          type: "select",
+          options: [
+            { value: "none", label: "No buddy assigned" }, // <-- Add this option
+            ...members.map((m) => ({
+              value: m.id,
+              label: `${m.firstname} ${m.lastname}`,
+            })),
+          ],
+          placeholder: "Select a buddy",
+          defaultValue: "",
+          getValue: (row) => row.buddy?.id || "none",
+        },
+        cell: (value, row) => (
+          <div className="text-sm text-muted-foreground">
+            {row.buddy ? (
+              `${row.buddy.firstname} ${row.buddy.lastname}`
+            ) : (
+              <span className="italic">No buddy assigned</span>
+            )}
+          </div>
+        ),
+      },
       // column for active status
       {
         accessorKey: "active",
@@ -107,17 +144,23 @@ export default function TraineesPage() {
         filterable: true,
         filterConfig: {
           type: "select",
-          options: trainees
-            .map((trainee) => trainee.program)
-            .filter((name, index, self) => name && self.indexOf(name) === index)
-            .map((name) => ({
-              value: name || "",
-              label: name || "No program assigned",
-            })),
+          options: [
+            { value: "none", label: "No program assigned" }, // <-- Add this option
+            ...trainees
+              .map((trainee) => trainee.program)
+              .filter(
+                (name, index, self) => name && self.indexOf(name) === index
+              )
+              .map((name) => ({
+                value: name || "",
+                label: name || "No program assigned",
+              })),
+          ],
+          getValue: (row) => row.program || "none",
         },
         cell: (value, row) => (
           <div className="text-sm text-muted-foreground">
-            {row.program || "No program assigned"}
+            {row.program || <span className="italic">No program assigned</span>}
           </div>
         ),
       },
@@ -136,7 +179,7 @@ export default function TraineesPage() {
         },
       },
     ],
-    [teams, trainees]
+    [teams, trainees, members]
   );
   const [columns, setColumns] = useState<ColumnDef<Trainee>[]>(defaultColumns);
 
@@ -154,16 +197,17 @@ export default function TraineesPage() {
     lastname: "",
     email: "",
     originalTeam: "",
+    buddy: "",
   });
 
-  const fetchTrainees = async () => {
+  const fetchTrainees = useCallback(async () => {
     setIsLoading(true);
     try {
+      await refreshMembers();
       const data = await getTrainees();
       setTrainees(data);
       const tempTeams = data
         .map((trainee) => trainee.originalTeam)
-        // Remove duplicates
         .filter((team, index, self) => self.indexOf(team) === index);
       setTeams(tempTeams);
       setColumns((prev) => {
@@ -205,7 +249,8 @@ export default function TraineesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshMembers, getTrainees, members]);
 
   useEffect(() => {
     fetchTrainees();
@@ -231,7 +276,12 @@ export default function TraineesPage() {
     return () => {
       setTopbar(null); // Clear the topbar when component unmounts
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setTopbar]);
+
+  useEffect(() => {
+    setColumns(defaultColumns);
+  }, [defaultColumns]);
 
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -246,7 +296,8 @@ export default function TraineesPage() {
     setCreating(true);
     try {
       if (member) {
-        await createTrainee({ ...form, addedBy: member?.id });
+        const newMember = await createTrainee({ ...form, addedBy: member?.id });
+        await addBuddyForTrainee(newMember.id, form.buddy);
         await fetchTrainees(); // Refresh the list after creation
       }
     } catch (error) {
@@ -256,12 +307,24 @@ export default function TraineesPage() {
       setOpenCreateConfirm(false);
       setOpenCreateDialog(false);
       toast(`${form.firstname} ${form.lastname} is now added as a Trainee`);
-      setForm({ firstname: "", lastname: "", email: "", originalTeam: "" });
+      setForm({
+        firstname: "",
+        lastname: "",
+        email: "",
+        originalTeam: "",
+        buddy: "",
+      });
     }
   };
 
   const toggleCreateDialog = () => {
-    setForm({ firstname: "", lastname: "", email: "", originalTeam: "" });
+    setForm({
+      firstname: "",
+      lastname: "",
+      email: "",
+      originalTeam: "",
+      buddy: "",
+    });
     setOpenCreateDialog(true);
   };
 
@@ -345,6 +408,29 @@ export default function TraineesPage() {
               onChange={handleFormChange}
               required
             />
+          </div>
+          <div className="w-full flex flex-col items-stretch">
+            <Label className="mb-3" htmlFor="buddy">
+              Buddy (optional)
+            </Label>
+            <Select
+              name="buddy"
+              value={form.buddy}
+              onValueChange={(value) =>
+                setForm((prev) => ({ ...prev, buddy: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a buddy" />
+              </SelectTrigger>
+              <SelectContent>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.firstname} {m.lastname}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -508,6 +594,7 @@ export default function TraineesPage() {
           ) : (
             <DataTable
               data={trainees}
+              members={members}
               columns={columns}
               isLoading={isLoading}
               actions={actions}

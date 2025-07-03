@@ -23,14 +23,18 @@ type Member = {
 
 type MemberContextType = {
   member: Member | null;
+  members: Member[];
+  refreshMembers: () => Promise<void>;
   loading: boolean;
   refreshMember: () => Promise<void>;
 };
 
 const MemberContext = createContext<MemberContextType>({
   member: null,
+  members: [],
   loading: true,
   refreshMember: async () => {},
+  refreshMembers: async () => {},
 });
 
 export const useMember = () => useContext(MemberContext);
@@ -43,6 +47,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const fetchMember = useCallback(async () => {
     if (!user) return;
@@ -64,6 +69,19 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, [user, supabase]);
 
+  // Fetch all members
+  const fetchMembers = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("member").select("*");
+    if (error) {
+      console.warn("Error fetching members:", error.message);
+      setMembers([]);
+    } else {
+      setMembers(data || []);
+    }
+    setLoading(false);
+  }, [supabase]);
+
   useEffect(() => {
     if (userLoading) return;
     if (user) fetchMember();
@@ -75,7 +93,13 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
   return (
     <MemberContext.Provider
-      value={{ member, loading, refreshMember: fetchMember }}
+      value={{
+        member,
+        loading,
+        members,
+        refreshMember: fetchMember,
+        refreshMembers: fetchMembers,
+      }}
     >
       {children}
     </MemberContext.Provider>

@@ -12,6 +12,8 @@ export type Trainee = {
   created_at: string; // ISO date string
   program?: string;
   member?: Member;
+  buddy_id?: string; // Optional field to link to a buddy member
+  buddy?: Member; // Optional field to link to a buddy member
 };
 
 export type ProgressLog = {

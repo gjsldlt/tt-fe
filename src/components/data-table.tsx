@@ -76,6 +76,7 @@ export interface DataTableProps<T> {
   searchPlaceholder?: string;
   className?: string;
   maxHeight?: string; // <-- Add this line
+  members?: { id: string; firstname: string; lastname: string }[]; // <-- Add this line
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -88,7 +89,6 @@ interface SortState {
 interface FilterState {
   [key: string]: unknown;
 }
-
 export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
@@ -101,6 +101,7 @@ export function DataTable<T extends Record<string, unknown>>({
   searchPlaceholder = "Search...",
   className,
   maxHeight, // <-- Add this line
+  members = [], // <-- Add this line
 }: DataTableProps<T>) {
   const [sortState, setSortState] = React.useState<SortState>({
     column: null,
@@ -581,13 +582,49 @@ export function DataTable<T extends Record<string, unknown>>({
               }
             }
 
-            return (
-              <Badge key={key} variant="secondary" className="gap-1">
-                {column.header}: {displayValue}
-                <X
-                  className="h-3 w-3 cursor-pointer"
+            // Buddy chip: show firstname + lastname
+            if (key === "buddy") {
+              const buddy = members.find((m) => m.id === value);
+              return (
+                <Badge
+                  key={key}
+                  variant="secondary"
+                  className="gap-1"
                   onClick={() => handleColumnFilterChange(key, "")}
-                />
+                >
+                  Buddy:{" "}
+                  {buddy
+                    ? `${buddy.firstname} ${buddy.lastname}`
+                    : String(value)}
+                  <X className="h-3 w-3 cursor-pointer" />
+                </Badge>
+              );
+            }
+
+            // Status chip: show Active/Inactive
+            if (key === "active") {
+              return (
+                <Badge
+                  key={key}
+                  variant="secondary"
+                  className="gap-1"
+                  onClick={() => handleColumnFilterChange(key, "")}
+                >
+                  Status: {value === "true" ? "Active" : "Inactive"}
+                  <X className="h-3 w-3 cursor-pointer" />
+                </Badge>
+              );
+            }
+
+            return (
+              <Badge
+                key={key}
+                variant="secondary"
+                className="gap-1"
+                onClick={() => handleColumnFilterChange(key, "")}
+              >
+                {column.header}: {displayValue}
+                <X className="h-3 w-3 cursor-pointer" />
               </Badge>
             );
           })}
