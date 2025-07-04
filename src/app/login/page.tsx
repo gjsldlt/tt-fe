@@ -80,7 +80,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Separator />
-          {!showForgot ? (
+          {/* {!showForgot ? (
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div>
                 <Label className="mb-2" htmlFor="email">
@@ -152,7 +152,7 @@ export default function LoginPage() {
                 </Button>
               </div>
             </form>
-          )}
+          )} */}
           <div className="flex items-center gap-4">
             <Separator className="flex-1" />
             <span className="text-muted-foreground">or</span>
