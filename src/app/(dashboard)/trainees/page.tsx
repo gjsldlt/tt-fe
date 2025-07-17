@@ -20,7 +20,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { useMember } from "@/app/context/member-context";
 import { toast } from "sonner";
 import { Delete, MoreVertical, RefreshCw, View } from "lucide-react";
@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function TraineesPage() {
+function TraineesPageContent() {
   const { member, members, refreshMembers } = useMember();
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
@@ -56,7 +56,7 @@ export default function TraineesPage() {
   // Get default values for URL parameters
   const getDefaultBuddy = useCallback(() => {
     return member ? `${member.firstname} ${member.lastname}` : "";
-  }, [member?.firstname, member?.lastname]);
+  }, [member?.firstname, member?.lastname, member]); // Added member to dependencies
 
   // Initialize and manage URL query parameters
   const [urlParams, setUrlParams] = useState({
@@ -336,7 +336,6 @@ export default function TraineesPage() {
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshMembers]);
 
   useEffect(() => {
@@ -699,5 +698,13 @@ export default function TraineesPage() {
         </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function TraineesPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+      <TraineesPageContent />
+    </Suspense>
   );
 }
