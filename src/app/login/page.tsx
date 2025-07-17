@@ -186,7 +186,7 @@ export default function LoginPage() {
             >
               Create one
             </Button>
-            <Button
+            {/* <Button
               type="button"
               variant={"link"}
               onClick={() => {
@@ -195,7 +195,7 @@ export default function LoginPage() {
               }}
             >
               Forgot password?
-            </Button>
+            </Button> */}
           </div>
           <div className="text-center text-sm text-muted-foreground">
             By continuing, you agree to our Terms of Service and Privacy Policy.
