@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMember } from "@/app/context/member-context";
 import { toast } from "sonner";
 import { Delete, MoreVertical, RefreshCw, View } from "lucide-react";
-import { redirect } from "next/navigation";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useTopbar } from "@/app/context/topbar-context";
 import {
@@ -48,6 +48,67 @@ export default function TraineesPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [teams, setTeams] = useState<string[]>(["FED", "AEM", "UI/UX"]);
   const { setTopbar } = useTopbar();
+
+  // URL query parameters handling 🔥
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get default values for URL parameters
+  const getDefaultBuddy = useCallback(() => {
+    return member ? `${member.firstname} ${member.lastname}` : "";
+  }, [member?.firstname, member?.lastname]);
+
+  // Initialize and manage URL query parameters
+  const [urlParams, setUrlParams] = useState({
+    status: "active",
+    buddy: "",
+  });
+
+  // Update URL parameters when they change
+  const updateURLParams = useCallback(
+    (newParams: Partial<typeof urlParams>) => {
+      const params = new URLSearchParams(searchParams);
+
+      Object.entries(newParams).forEach(([key, value]) => {
+        if (value || value === "") {
+          // Always set the parameter, even if it's an empty string 🔥
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
+      });
+
+      router.push(`?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router]
+  );
+
+  // Initialize URL parameters on component mount
+  useEffect(() => {
+    const defaultBuddy = getDefaultBuddy();
+
+    // Check if status parameter exists in URL (even if empty) 🔥
+    const statusParam = searchParams.get("status");
+    const status = statusParam !== null ? statusParam : "active"; // Use URL value if present, otherwise default to "active"
+
+    // Check if buddy parameter exists in URL (even if empty) 🔥
+    const buddyParam = searchParams.get("buddy");
+    const buddy = buddyParam !== null ? buddyParam : defaultBuddy; // Use URL value if present, otherwise default
+
+    const newParams = { status, buddy };
+    setUrlParams(newParams);
+
+    // Only set default URL parameters if they are completely missing from URL
+    const needsStatusDefault = !searchParams.has("status");
+    const needsBuddyDefault = !searchParams.has("buddy") && defaultBuddy;
+
+    if (needsStatusDefault || needsBuddyDefault) {
+      const paramsToUpdate: Partial<typeof urlParams> = {};
+      if (needsStatusDefault) paramsToUpdate.status = status;
+      if (needsBuddyDefault) paramsToUpdate.buddy = buddy;
+      updateURLParams(paramsToUpdate);
+    }
+  }, [searchParams, getDefaultBuddy, updateURLParams, member]);
 
   // Column variables for DataTable
   const defaultColumns: ColumnDef<Trainee>[] = useMemo(
@@ -93,15 +154,25 @@ export default function TraineesPage() {
         filterConfig: {
           type: "select",
           options: [
-            { value: "none", label: "No buddy assigned" }, // <-- Add this option
+            { value: "all", label: "All" }, // 🔥 Use "all" instead of empty string
+            { value: "none", label: "No buddy assigned" },
             ...members.map((m) => ({
-              value: m.id,
+              value: `${m.firstname} ${m.lastname}`, // Use full name for URL parameter matching
               label: `${m.firstname} ${m.lastname}`,
             })),
           ],
           placeholder: "Select a buddy",
-          defaultValue: "",
-          getValue: (row) => row.buddy?.id || "none",
+          defaultValue: urlParams.buddy || "all", // Default to "all" if empty
+          getValue: (row) =>
+            row.buddy ? `${row.buddy.firstname} ${row.buddy.lastname}` : "none",
+          onChange: (value: string) => {
+            const newParams = {
+              ...urlParams,
+              buddy: value === "all" ? "" : value, // Convert "all" to empty string for URL
+            };
+            setUrlParams(newParams);
+            updateURLParams(newParams);
+          },
         },
         cell: (value, row) => (
           <div className="text-sm text-muted-foreground">
@@ -122,11 +193,20 @@ export default function TraineesPage() {
         filterConfig: {
           type: "select",
           options: [
-            { value: "true", label: "Active" },
-            { value: "false", label: "Inactive" },
+            { value: "all", label: "All" }, // 🔥 Use "all" instead of empty string
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
           ],
-          defaultValue: "true",
-          getValue: (row) => String(row.active),
+          defaultValue: urlParams.status || "all", // Default to "all" if empty
+          getValue: (row) => (row.active ? "active" : "inactive"),
+          onChange: (value: string) => {
+            const newParams = {
+              ...urlParams,
+              status: value === "all" ? "" : value,
+            }; // Convert "all" to empty string for URL
+            setUrlParams(newParams);
+            updateURLParams(newParams);
+          },
         },
         cell: (value, row) => (
           <div className="text-sm">
@@ -145,7 +225,7 @@ export default function TraineesPage() {
         filterConfig: {
           type: "select",
           options: [
-            { value: "none", label: "No program assigned" }, // <-- Add this option
+            { value: "none", label: "No program assigned" },
             ...trainees
               .map((trainee) => trainee.program)
               .filter(
@@ -179,7 +259,7 @@ export default function TraineesPage() {
         },
       },
     ],
-    [teams, trainees, members]
+    [teams, trainees, members, urlParams, updateURLParams]
   );
   const [columns, setColumns] = useState<ColumnDef<Trainee>[]>(defaultColumns);
 
@@ -216,16 +296,22 @@ export default function TraineesPage() {
             return {
               ...col,
               filterConfig: {
+                ...col.filterConfig,
                 type: "select",
-                options: data
-                  .map((trainee) => trainee.program)
-                  .filter(
-                    (name, index, self) => name && self.indexOf(name) === index
-                  )
-                  .map((name) => ({
-                    value: name || "",
-                    label: name || "No program assigned",
-                  })),
+                options: [
+                  { value: "none", label: "No program assigned" },
+                  ...data
+                    .map((trainee) => trainee.program)
+                    .filter(
+                      (name, index, self) =>
+                        name && self.indexOf(name) === index
+                    )
+                    .map((name) => ({
+                      value: name || "",
+                      label: name || "No program assigned",
+                    })),
+                ],
+                getValue: (row) => row.program || "none",
               },
             };
           }
@@ -233,6 +319,7 @@ export default function TraineesPage() {
             return {
               ...col,
               filterConfig: {
+                ...col.filterConfig,
                 type: "select",
                 options: tempTeams.map((team) => ({
                   value: team,
@@ -250,7 +337,7 @@ export default function TraineesPage() {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshMembers, getTrainees, members]);
+  }, [refreshMembers]);
 
   useEffect(() => {
     fetchTrainees();
@@ -604,6 +691,7 @@ export default function TraineesPage() {
               searchable={true}
               maxHeight="75vh"
               searchPlaceholder="Search users by name, email, or department..."
+              onRowClick={(row) => redirect(`/trainees/${row.id}`)} // 🔥 Navigate to trainee details on row click
             />
           )}
           {traineeDialog}

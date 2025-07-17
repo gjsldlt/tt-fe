@@ -48,10 +48,13 @@ export interface FilterConfig {
   type: "text" | "select" | "date" | "number" | "boolean";
   options?: { label: string; value: string }[];
   placeholder?: string;
+  defaultValue?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getValue?: (row: any) => any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filterFunction?: (row: any, filterValue: any) => boolean; // <-- Add this line
+  filterFunction?: (row: any, filterValue: any) => boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onChange?: (value: any) => void;
 }
 
 export interface ColumnDef<T> {
@@ -75,8 +78,9 @@ export interface DataTableProps<T> {
   searchable?: boolean;
   searchPlaceholder?: string;
   className?: string;
-  maxHeight?: string; // <-- Add this line
-  members?: { id: string; firstname: string; lastname: string }[]; // <-- Add this line
+  maxHeight?: string;
+  members?: { id: string; firstname: string; lastname: string }[];
+  onRowClick?: (row: T) => void; // 🔥 Optional row click handler
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -100,8 +104,9 @@ export function DataTable<T extends Record<string, unknown>>({
   searchable = true,
   searchPlaceholder = "Search...",
   className,
-  maxHeight, // <-- Add this line
-  members = [], // <-- Add this line
+  maxHeight,
+  members = [],
+  onRowClick, // 🔥 Add row click handler
 }: DataTableProps<T>) {
   const [sortState, setSortState] = React.useState<SortState>({
     column: null,
@@ -110,7 +115,42 @@ export function DataTable<T extends Record<string, unknown>>({
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(initialPageSize);
   const [globalFilter, setGlobalFilter] = React.useState("");
-  const [columnFilters, setColumnFilters] = React.useState<FilterState>({});
+
+  // Initialize column filters with default values 🔥
+  const [columnFilters, setColumnFilters] = React.useState<FilterState>(() => {
+    const initialFilters: FilterState = {};
+    columns.forEach((column) => {
+      if (column.filterConfig?.defaultValue) {
+        initialFilters[String(column.accessorKey)] =
+          column.filterConfig.defaultValue;
+      }
+    });
+    return initialFilters;
+  });
+
+  // Update filters when columns change (for URL parameter sync)
+  React.useEffect(() => {
+    const newFilters: FilterState = {};
+    let hasChanges = false;
+
+    columns.forEach((column) => {
+      const columnKey = String(column.accessorKey);
+      const defaultValue = column.filterConfig?.defaultValue;
+
+      if (defaultValue !== undefined) {
+        // Always sync with defaultValue to ensure URL parameter changes are reflected
+        if (columnFilters[columnKey] !== defaultValue) {
+          newFilters[columnKey] = defaultValue;
+          hasChanges = true;
+        }
+      }
+    });
+
+    // Only update if there are actual changes
+    if (hasChanges) {
+      setColumnFilters((prev) => ({ ...prev, ...newFilters }));
+    }
+  }, [columns.map((col) => col.filterConfig?.defaultValue).join(",")]); // Watch for defaultValue changes
 
   // Filter data based on global search and column filters
   const filteredData = React.useMemo(() => {
@@ -133,7 +173,8 @@ export function DataTable<T extends Record<string, unknown>>({
       if (
         filterValue !== undefined &&
         filterValue !== "" &&
-        filterValue !== null
+        filterValue !== null &&
+        filterValue !== "all"
       ) {
         const column = columns.find(
           (col) => String(col.accessorKey) === columnKey
@@ -296,12 +337,32 @@ export function DataTable<T extends Record<string, unknown>>({
       [columnKey]: value,
     }));
     setCurrentPage(1); // Reset to first page when filtering
+
+    // Call onChange callback if provided 🔥
+    const column = columns.find((col) => String(col.accessorKey) === columnKey);
+    if (column?.filterConfig?.onChange) {
+      column.filterConfig.onChange(value);
+    }
   };
 
   // Clear all filters
   const clearAllFilters = () => {
     setGlobalFilter("");
-    setColumnFilters({});
+
+    // Reset to default values instead of clearing completely 🔥
+    const defaultFilters: FilterState = {};
+    columns.forEach((column) => {
+      if (column.filterConfig?.defaultValue) {
+        defaultFilters[String(column.accessorKey)] =
+          column.filterConfig.defaultValue;
+
+        // Call onChange callback if provided 🔥
+        if (column.filterConfig?.onChange) {
+          column.filterConfig.onChange(column.filterConfig.defaultValue);
+        }
+      }
+    });
+    setColumnFilters(defaultFilters);
     setCurrentPage(1);
   };
 
@@ -338,6 +399,7 @@ export function DataTable<T extends Record<string, unknown>>({
         value !== undefined &&
         value !== "" &&
         value !== null &&
+        value !== "all" &&
         (typeof value === "object" ? Object.values(value).some((v) => v) : true)
     );
 
@@ -345,8 +407,9 @@ export function DataTable<T extends Record<string, unknown>>({
   const ColumnFilter = ({ column }: { column: ColumnDef<T> }) => {
     const columnKey = String(column.accessorKey);
     const rawFilterValue = columnFilters[columnKey];
-    const filterValue =
-      typeof rawFilterValue === "string" ? rawFilterValue : "";
+    const filterValue = String(
+      rawFilterValue || column.filterConfig?.defaultValue || ""
+    );
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,7 +436,7 @@ export function DataTable<T extends Record<string, unknown>>({
       case "select":
         return (
           <Select
-            value={(filterValue as string) || ""}
+            value={filterValue || "all"} // Default to "all" if empty
             onValueChange={(value) =>
               handleColumnFilterChange(columnKey, value === "all" ? "" : value)
             }
@@ -382,7 +445,6 @@ export function DataTable<T extends Record<string, unknown>>({
               <SelectValue placeholder={`Filter ${column.header}`} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
               {column.filterConfig?.options?.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -668,7 +730,10 @@ export function DataTable<T extends Record<string, unknown>>({
               paginatedData.map((row, index) => (
                 <TableRow
                   key={index}
-                  className="block md:table-row border-b md:border-0 mb-4 md:mb-0 bg-background md:bg-transparent"
+                  className={`block md:table-row border-b md:border-0 mb-4 md:mb-0 bg-background md:bg-transparent ${
+                    onRowClick ? "cursor-pointer hover:bg-muted/50" : ""
+                  }`}
+                  onClick={() => onRowClick?.(row)}
                 >
                   {columns.map((column) => (
                     <TableCell
@@ -689,7 +754,10 @@ export function DataTable<T extends Record<string, unknown>>({
                     </TableCell>
                   ))}
                   {actions && (
-                    <TableCell className="block md:table-cell px-2 py-2 md:px-4 md:py-2 align-top">
+                    <TableCell
+                      className="block md:table-cell px-2 py-2 md:px-4 md:py-2 align-top"
+                      onClick={(e) => e.stopPropagation()} // 🔥 Prevent row click on actions
+                    >
                       <span className="md:hidden font-semibold text-muted-foreground block mb-1">
                         Actions
                       </span>

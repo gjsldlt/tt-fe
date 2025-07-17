@@ -291,7 +291,7 @@ function ProgramAssignmentCard({
           dangerouslySetInnerHTML={{
             __html:
               event.data.notes.length < CONCAT_CHAR_COUNT || !concat
-                ? event.data.notes.length
+                ? event.data.notes
                 : event.data.notes.slice(0, CONCAT_CHAR_COUNT) + "...",
           }}
         />
