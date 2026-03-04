@@ -274,7 +274,7 @@ export default function SelectedTrainee() {
             <RefreshCw className="h-4 w-4" />
           )}
         </Button>
-      </div>
+      </div>,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -293,7 +293,7 @@ export default function SelectedTrainee() {
   };
 
   const handleFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     setForm((prev) => ({
       ...prev,
@@ -328,7 +328,7 @@ export default function SelectedTrainee() {
                 ? undefined
                 : members.filter((m) => m.id === form.buddy)[0] || undefined, // Convert "none" to null
           },
-          member?.id || ""
+          member?.id || "",
         );
         await getTrainee(params.id);
       }
@@ -675,7 +675,7 @@ export default function SelectedTrainee() {
                 value={tempProgram?.id ? String(tempProgram.id) : ""}
                 onValueChange={(value) => {
                   const selectedProgram = allPrograms.find(
-                    (p) => String(p.id) === value
+                    (p) => String(p.id) === value,
                   );
                   setTempProgram(selectedProgram || null);
                 }}
@@ -708,7 +708,7 @@ export default function SelectedTrainee() {
                 }
                 onChange={(e) =>
                   setConfirmDate(
-                    e.target.value ? new Date(e.target.value) : new Date()
+                    e.target.value ? new Date(e.target.value) : new Date(),
                   )
                 }
               />
@@ -769,7 +769,7 @@ export default function SelectedTrainee() {
               }
               onChange={(e) =>
                 setConfirmDate(
-                  e.target.value ? new Date(e.target.value) : new Date()
+                  e.target.value ? new Date(e.target.value) : new Date(),
                 )
               }
               className="w-full"
@@ -795,7 +795,7 @@ export default function SelectedTrainee() {
                     // Call the service to finish the program with the selected date
                     await markProgramAssignmentDone(
                       trainee?.id || "",
-                      activeProgramAssignment
+                      activeProgramAssignment,
                     );
                     toast("Program finished successfully", {
                       description: `Program ${activeProgram?.name} has been finished for ${trainee?.firstname} ${trainee?.lastname}.`,
@@ -994,7 +994,7 @@ export default function SelectedTrainee() {
   };
 
   const handleDeleteProgramAssignment = (
-    assignmentId: string | undefined
+    assignmentId: string | undefined,
   ): void => {
     setDialogData({
       isOpen: true,
@@ -1074,7 +1074,7 @@ export default function SelectedTrainee() {
                 <AvatarFallback className="text-lg">
                   {getInitials(
                     trainee?.firstname || "",
-                    trainee?.lastname || ""
+                    trainee?.lastname || "",
                   )}
                 </AvatarFallback>
               </Avatar>
@@ -1101,7 +1101,7 @@ export default function SelectedTrainee() {
                     <span>
                       Joined{" "}
                       {new Date(
-                        trainee?.created_at || new Date()
+                        trainee?.created_at || new Date(),
                       ).toLocaleDateString()}
                     </span>
                   </div>
@@ -1143,16 +1143,19 @@ export default function SelectedTrainee() {
                         Active Program: {activeProgram.name}
                       </span>
                     </div>
-                    <div className="text-sm mb-4 break-words">
-                      {activeProgram.description}
-                    </div>
+                    <div
+                      className="text-sm mb-4 break-words prose prose-sm dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: activeProgram.description || "",
+                      }}
+                    />
                     <div className="text-sm flex flex-col sm:flex-row text-muted-foreground gap-2 sm:gap-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>
                           Assigned on{" "}
                           {new Date(
-                            activeProgramAssignment?.created_at || new Date()
+                            activeProgramAssignment?.created_at || new Date(),
                           ).toLocaleDateString()}
                         </span>
                       </div>

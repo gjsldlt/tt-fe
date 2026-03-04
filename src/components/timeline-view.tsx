@@ -198,12 +198,14 @@ function ProgressLogCard({
       </CardHeader>
       <CardContent className="flex-1 sm:px-6">
         <div
-          className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap break-words"
+          className="text-sm sm:text-base text-muted-foreground leading-relaxed break-words prose prose-sm dark:prose-invert max-w-none"
           dangerouslySetInnerHTML={{
-            __html:
-              event.data.description.length < CONCAT_CHAR_COUNT || !concat
-                ? event.data.description
-                : event.data.description.slice(0, CONCAT_CHAR_COUNT) + "...",
+            __html: (() => {
+              const raw = event.data.description?.trim() || "";
+              return raw.length < CONCAT_CHAR_COUNT || !concat
+                ? raw
+                : raw.slice(0, CONCAT_CHAR_COUNT) + "...";
+            })(),
           }}
         />
       </CardContent>
@@ -287,12 +289,14 @@ function ProgramAssignmentCard({
       </CardHeader>
       <CardContent className="px-3 sm:px-6 space-y-3">
         <div
-          className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap break-words"
+          className="text-sm sm:text-base text-muted-foreground leading-relaxed break-words prose prose-sm dark:prose-invert max-w-none"
           dangerouslySetInnerHTML={{
-            __html:
-              event.data.notes.length < CONCAT_CHAR_COUNT || !concat
-                ? event.data.notes
-                : event.data.notes.slice(0, CONCAT_CHAR_COUNT) + "...",
+            __html: (() => {
+              const raw = event.data.notes?.trim() || "";
+              return raw.length < CONCAT_CHAR_COUNT || !concat
+                ? raw
+                : raw.slice(0, CONCAT_CHAR_COUNT) + "...";
+            })(),
           }}
         />
 
@@ -499,7 +503,7 @@ export function TimelineView({
 
     // Sort by date (newest first)
     return events.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   }, [trainee, progressLogs, programAssignments, traineeAuditLogsData]);
 
@@ -568,8 +572,8 @@ export function TimelineView({
         placeholder: "Search by creator",
         options: Array.from(
           new Set(
-            timelineEvents.map((event) => event.createdBy).filter(Boolean)
-          )
+            timelineEvents.map((event) => event.createdBy).filter(Boolean),
+          ),
         ).map((creator) => ({
           value: creator,
           label: creator,
@@ -703,7 +707,7 @@ export function TimelineView({
               <span className="font-medium">Status:</span>{" "}
               {event.data.done_at
                 ? `Completed on ${new Date(
-                    event.data.done_at
+                    event.data.done_at,
                   ).toLocaleDateString()}`
                 : "In Progress"}
             </div>
@@ -823,11 +827,11 @@ export function TimelineView({
         open={!!selectedEvent}
         onOpenChange={(open) => !open && setSelectedEvent(null)}
       >
-        <DialogContent className="!max-w-[80vw] !max-h-[80vh] w-full md:w-[50vw]">
-          <DialogHeader>
+        <DialogContent className="!max-w-[80vw] !max-h-[80vh] w-full md:w-[50vw] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Timeline Event Details</DialogTitle>
           </DialogHeader>
-          <div className="py-2 overflow-auto">
+          <div className="py-2 overflow-y-auto flex-1 min-h-0">
             {renderEventDetails(selectedEvent)}
           </div>
           <DialogFooter>

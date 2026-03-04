@@ -36,7 +36,7 @@ export async function getTrainees() {
         ...trainee,
         program: (programData?.program as unknown as Program).name,
       };
-    })
+    }),
   );
 
   // add buddy for each trainee
@@ -60,7 +60,7 @@ export async function getTrainees() {
           email: string;
         } | null,
       };
-    })
+    }),
   );
 
   return traineesWithBuddies;
@@ -87,7 +87,7 @@ export async function updateTrainee(
     addedBy: string;
     buddy?: Member; // <-- add buddy to type
   }>,
-  updatedBy: string
+  updatedBy: string,
 ) {
   const {
     data: { session },
@@ -109,7 +109,7 @@ export async function updateTrainee(
         Prefer: "return=representation",
       } as Record<string, string>,
       body: JSON.stringify(traineeUpdates),
-    }
+    },
   );
 
   // Track changes for audit log
@@ -175,7 +175,7 @@ export async function updateTrainee(
               trainee_id: id,
               id: currentBuddyRowId,
             }),
-          }
+          },
         );
         changes["buddy"] = {
           old: `${old.buddy?.firstname} ${old.buddy?.lastname}`,
@@ -206,7 +206,7 @@ export async function updateTrainee(
   } else if (!res.ok) {
     const errorData = await res.json();
     throw new Error(
-      `Error updating trainee ${id}: ${errorData.message || res.statusText}`
+      `Error updating trainee ${id}: ${errorData.message || res.statusText}`,
     );
   }
   return res;
@@ -286,7 +286,7 @@ export async function getTraineeById(id: string) {
           email
         )
       )
-    `
+    `,
     )
     .eq("id", id)
     .single();
@@ -324,6 +324,44 @@ export async function getActiveTrainees() {
   if (error)
     throw new Error(`Error fetching active trainees: ${error.message}`);
   return data;
+}
+
+/**
+ * 🔥 Paginated active trainees with buddy info for dashboard use.
+ * Supports optional search by firstname, lastname, or email.
+ */
+export async function getActiveTraineesPaginated(
+  page: number = 1,
+  pageSize: number = 10,
+  search?: string,
+) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from("trainee")
+    .select(
+      `*, buddy:traineebuddy!trainee_id(buddy_id, member:buddy_id(id, firstname, lastname, email))`,
+      { count: "exact" },
+    )
+    .eq("active", true);
+
+  if (search && search.trim().length > 0) {
+    const s = search.trim();
+    query = query.or(
+      `firstname.ilike.%${s}%,lastname.ilike.%${s}%,email.ilike.%${s}%`,
+    );
+  }
+
+  const { data, count, error } = await query
+    .order("lastname", { ascending: true })
+    .range(from, to);
+
+  if (error)
+    throw new Error(
+      `Error fetching paginated active trainees: ${error.message}`,
+    );
+  return { data: data || [], count: count ?? 0 };
 }
 
 export async function getInactiveTrainees() {
@@ -364,7 +402,7 @@ export async function getBuddyForTrainee(traineeId: string) {
           email,
           role
         )
-      `
+      `,
     )
     .eq("trainee_id", traineeId)
     .single();
@@ -389,7 +427,7 @@ export async function getBuddiesOfMember(memberId: string) {
           originalTeam,
           active
         )
-      `
+      `,
     )
     .eq("buddy_id", memberId);
 
@@ -401,7 +439,7 @@ export async function getBuddiesOfMember(memberId: string) {
 // Update buddy for a given trainee (change buddy_id for a trainee_id)
 export async function updateBuddyOfTrainee(
   traineeId: string,
-  newBuddyId: string
+  newBuddyId: string,
 ) {
   const { data, error } = await supabase
     .from("traineebuddy")
@@ -418,7 +456,7 @@ export async function updateBuddyOfTrainee(
 // Delete buddy row by trainee_id and buddy_id
 export async function deleteBuddyByTraineeAndBuddy(
   traineeId: string,
-  buddyId: string
+  buddyId: string,
 ) {
   const { error } = await supabase
     .from("traineebuddy")
@@ -428,7 +466,7 @@ export async function deleteBuddyByTraineeAndBuddy(
 
   if (error)
     throw new Error(
-      `Error deleting buddy by trainee and buddy: ${error.message}`
+      `Error deleting buddy by trainee and buddy: ${error.message}`,
     );
   return true;
 }
