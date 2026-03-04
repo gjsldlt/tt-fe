@@ -9,6 +9,7 @@ import { useTopbar } from "@/app/context/topbar-context";
 import { ActiveTraineesPanel } from "@/components/dashboard/active-trainees-panel";
 import { ProgressLogsPanel } from "@/components/dashboard/progress-logs-panel";
 import { MemberActivityPanel } from "@/components/dashboard/member-activity-panel";
+import { TeamsCard } from "@/components/dashboard/teams-card";
 
 type Member = {
   id: string;
@@ -106,8 +107,29 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="flex flex-col h-full w-full overflow-hidden">
-        {/* 📊 Compact metric cards row */}
+        {/* 📊 Compact metric cards row — aligned above their panels */}
         <div className="grid gap-3 grid-cols-3 p-3 shrink-0">
+          {/* Col 1: Active Trainees — above Active Trainees panel */}
+          <MetricCard
+            title="Active Trainees"
+            value={loading ? "..." : fmt(traineeCount)}
+            description="active trainees"
+            icon={loading ? <RefreshCw className="animate-spin" /> : <Users />}
+          />
+          {/* Col 2: Programs + Teams (split) — above Progress Logs panel */}
+          <div className="flex gap-3">
+            <MetricCard
+              title="Programs"
+              value={loading ? "..." : fmt(programsCount)}
+              description="active programs"
+              icon={
+                loading ? <RefreshCw className="animate-spin" /> : <BookOpen />
+              }
+              className="flex-1 min-w-0"
+            />
+            <TeamsCard className="flex-1 min-w-0" />
+          </div>
+          {/* Col 3: Members — above Buddy Activity panel (admin only) */}
           {member?.role === "admin" && (
             <MetricCard
               title="Members"
@@ -118,24 +140,10 @@ export default function DashboardPage() {
               }
             />
           )}
-          <MetricCard
-            title="Programs"
-            value={loading ? "..." : fmt(programsCount)}
-            description="active programs"
-            icon={
-              loading ? <RefreshCw className="animate-spin" /> : <BookOpen />
-            }
-          />
-          <MetricCard
-            title="Active Trainees"
-            value={loading ? "..." : fmt(traineeCount)}
-            description="active trainees"
-            icon={loading ? <RefreshCw className="animate-spin" /> : <Users />}
-          />
         </div>
 
         {/* 📋 Main panels — fill remaining viewport, no page scroll */}
-        {member?.role === "admin" ? (
+        {member?.role === "admin" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-3 pb-3 min-h-0 flex-1">
             <ActiveTraineesPanel
               selectedTraineeId={selectedTraineeId}
@@ -152,21 +160,6 @@ export default function DashboardPage() {
             <MemberActivityPanel
               selectedMemberId={selectedMemberId}
               onSelectMember={handleSelectMember}
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-3 pb-3 min-h-0 flex-1">
-            <ActiveTraineesPanel
-              selectedTraineeId={selectedTraineeId}
-              onSelectTrainee={handleSelectTrainee}
-            />
-            <ProgressLogsPanel
-              selectedTraineeId={selectedTraineeId}
-              selectedTraineeName={selectedTraineeName}
-              selectedMemberId={null}
-              selectedMemberName=""
-              onClearTrainee={() => handleSelectTrainee(null)}
-              onClearMember={() => {}}
             />
           </div>
         )}

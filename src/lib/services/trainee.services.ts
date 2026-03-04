@@ -388,6 +388,50 @@ export async function getUniqueOriginalTeams() {
   return data.map((item) => item.originalTeam).filter(Boolean);
 }
 
+/**
+ * 🔥 Get team statistics — distinct teams with active / inactive trainee counts.
+ * Returns { teams: TeamStat[], activeTeamCount, totalTeamCount }.
+ */
+export type TeamStat = {
+  team: string;
+  activeCount: number;
+  inactiveCount: number;
+};
+
+export async function getTeamStats(): Promise<{
+  teams: TeamStat[];
+  activeTeamCount: number;
+  totalTeamCount: number;
+}> {
+  const { data, error } = await supabase
+    .from("trainee")
+    .select("originalTeam, active")
+    .neq("originalTeam", null);
+
+  if (error) throw new Error(`Error fetching team stats: ${error.message}`);
+
+  const map = new Map<string, { active: number; inactive: number }>();
+  for (const row of data ?? []) {
+    const team = row.originalTeam as string;
+    if (!team) continue;
+    const entry = map.get(team) ?? { active: 0, inactive: 0 };
+    if (row.active) entry.active++;
+    else entry.inactive++;
+    map.set(team, entry);
+  }
+
+  const teams: TeamStat[] = Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([team, counts]) => ({
+      team,
+      activeCount: counts.active,
+      inactiveCount: counts.inactive,
+    }));
+
+  const activeTeamCount = teams.filter((t) => t.activeCount > 0).length;
+  return { teams, activeTeamCount, totalTeamCount: teams.length };
+}
+
 // Get the buddy (member) for a given trainee id
 export async function getBuddyForTrainee(traineeId: string) {
   const { data, error } = await supabase

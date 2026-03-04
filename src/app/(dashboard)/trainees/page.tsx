@@ -62,6 +62,7 @@ function TraineesPageContent() {
   const [urlParams, setUrlParams] = useState({
     status: "active",
     buddy: "",
+    team: "",
   });
 
   // Update URL parameters when they change
@@ -80,7 +81,7 @@ function TraineesPageContent() {
 
       router.push(`?${params.toString()}`, { scroll: false });
     },
-    [searchParams, router]
+    [searchParams, router],
   );
 
   // Initialize URL parameters on component mount
@@ -95,7 +96,11 @@ function TraineesPageContent() {
     const buddyParam = searchParams.get("buddy");
     const buddy = buddyParam !== null ? buddyParam : defaultBuddy; // Use URL value if present, otherwise default
 
-    const newParams = { status, buddy };
+    // Check if team parameter exists in URL (even if empty) 🔥
+    const teamParam = searchParams.get("team");
+    const team = teamParam !== null ? teamParam : "";
+
+    const newParams = { status, buddy, team };
     setUrlParams(newParams);
 
     // Only set default URL parameters if they are completely missing from URL
@@ -229,7 +234,7 @@ function TraineesPageContent() {
             ...trainees
               .map((trainee) => trainee.program)
               .filter(
-                (name, index, self) => name && self.indexOf(name) === index
+                (name, index, self) => name && self.indexOf(name) === index,
               )
               .map((name) => ({
                 value: name || "",
@@ -252,14 +257,26 @@ function TraineesPageContent() {
         filterConfig: {
           type: "select",
           // get options from trainees unique originalTeams
-          options: teams.map((team) => ({
-            value: team,
-            label: team,
-          })),
+          options: [
+            { value: "all", label: "All" },
+            ...teams.map((team) => ({
+              value: team,
+              label: team,
+            })),
+          ],
+          defaultValue: urlParams.team || "all",
+          onChange: (value: string) => {
+            const newParams = {
+              ...urlParams,
+              team: value === "all" ? "" : value,
+            };
+            setUrlParams(newParams);
+            updateURLParams(newParams);
+          },
         },
       },
     ],
-    [teams, trainees, members, urlParams, updateURLParams]
+    [teams, trainees, members, urlParams, updateURLParams],
   );
   const [columns, setColumns] = useState<ColumnDef<Trainee>[]>(defaultColumns);
 
@@ -304,7 +321,7 @@ function TraineesPageContent() {
                     .map((trainee) => trainee.program)
                     .filter(
                       (name, index, self) =>
-                        name && self.indexOf(name) === index
+                        name && self.indexOf(name) === index,
                     )
                     .map((name) => ({
                       value: name || "",
@@ -321,10 +338,13 @@ function TraineesPageContent() {
               filterConfig: {
                 ...col.filterConfig,
                 type: "select",
-                options: tempTeams.map((team) => ({
-                  value: team,
-                  label: team,
-                })),
+                options: [
+                  { value: "all", label: "All" },
+                  ...tempTeams.map((team) => ({
+                    value: team,
+                    label: team,
+                  })),
+                ],
               },
             };
           }
@@ -357,7 +377,7 @@ function TraineesPageContent() {
             + New Trainee
           </Button>
         </div>
-      </>
+      </>,
     );
     return () => {
       setTopbar(null); // Clear the topbar when component unmounts
@@ -370,7 +390,7 @@ function TraineesPageContent() {
   }, [defaultColumns]);
 
   const handleFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     setForm((prev) => ({
       ...prev,
@@ -421,11 +441,11 @@ function TraineesPageContent() {
       await deleteTrainee(selectedTrainee.id);
       await fetchTrainees(); // Refresh the list after deletion
       toast(
-        `${selectedTrainee.firstname} ${selectedTrainee.lastname} has been deleted`
+        `${selectedTrainee.firstname} ${selectedTrainee.lastname} has been deleted`,
       );
     } catch (error) {
       toast.error(
-        `Error deleting trainee: ${selectedTrainee.firstname} ${selectedTrainee.lastname}`
+        `Error deleting trainee: ${selectedTrainee.firstname} ${selectedTrainee.lastname}`,
       );
       console.error("Error deleting trainee:", error);
     } finally {
@@ -703,7 +723,13 @@ function TraineesPageContent() {
 
 export default function TraineesPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-full">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
       <TraineesPageContent />
     </Suspense>
   );
